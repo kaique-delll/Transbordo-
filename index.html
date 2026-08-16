@@ -10,7 +10,7 @@ body{margin:0;font:14px Arial;background:#eef1f5;color:#172231}
 header{background:#09111e;color:white;padding:18px;display:flex;justify-content:space-between;align-items:center}
 .logo{font-size:30px;font-weight:900}
 .logo span{color:#ed1c24}
-.wrap{max-width:1150px;margin:auto;padding:18px}
+.wrap{max-width:1250px;margin:auto;padding:18px}
 .card{background:white;border-radius:12px;padding:18px;margin-bottom:15px;box-shadow:0 4px 18px #0001}
 .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
 .card-header h2{margin:0}
@@ -23,7 +23,7 @@ input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:7px;mar
 .light{background:#edf1f5}
 .table-wrapper{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
+th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:11px}
 .step{padding:12px;margin:7px 0;border-radius:8px;background:#edf0f3;color:#899}
 .active{color:white}
 .notice{text-align:center;padding:16px;border:2px solid #f57c00;border-radius:9px;background:#fff1e6;color:#954700;font-weight:900;font-size:18px}
@@ -33,7 +33,7 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 .modalbox{background:white;padding:20px;border-radius:12px;width:min(500px,92vw);text-align:center}
 .qr{width:180px;height:180px;margin:15px auto}
 .qr img{width:100%}
-.times-info{font-size:12px;color:#555;margin-top:8px;background:#f8f9fa;padding:10px;border-radius:6px}
+.times-info{font-size:12px;color:#555;margin-top:8px;background:#f8f9fa;padding:10px;border-radius:6px;line-height:1.6}
 .search-box{display:flex;gap:8px;margin-bottom:15px}
 .search-box input{margin:0}
 </style>
@@ -59,7 +59,7 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 
   <div class="card">
     <div class="card-header">
-      <h2>Cargas</h2>
+      <h2>Cargas do Dia</h2>
       <button class="btn green" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
     </div>
     <div class="table-wrapper">
@@ -67,13 +67,15 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
         <thead>
           <tr>
             <th>Carga</th>
-            <th>Motorista</th>
-            <th>Placa</th>
+            <th>Motorista / Placa</th>
             <th>Destino</th>
             <th>Conferente</th>
-            <th>Início</th>
-            <th>Término</th>
-            <th>Duração</th>
+            <th>Início Conf.</th>
+            <th>Fim Conf.</th>
+            <th>Tempo Conf.</th>
+            <th>Início Carreg.</th>
+            <th>Fim Carreg.</th>
+            <th>Tempo Carreg.</th>
             <th>Status</th>
             <th>Ações</th>
           </tr>
@@ -95,7 +97,10 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
   </div>
 
   <div class="card" id="cardStatus">
-    <div id="md" style="font-size:24px;font-weight:bold"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div id="md" style="font-size:24px;font-weight:bold"></div>
+      <button class="btn green" style="padding:6px 12px;font-size:12px;" onclick="syncData()">🔄 Atualizar Agora</button>
+    </div>
     <div id="mi"></div>
     <div id="mconf" style="font-weight:bold;color:#555;margin-top:4px"></div>
     <div id="mtimes" class="times-info"></div>
@@ -127,13 +132,26 @@ let cs = JSON.parse(localStorage.getItem('transbordo') || 'null') || [{
   conf: '-',
   s: 'Separação',
   dock: '',
-  startTime: null,
-  endTime: null
+  confStart: null,
+  confEnd: null,
+  loadStart: null,
+  loadEnd: null,
+  createdAt: new Date().toISOString().slice(0, 10)
 }], cur = '45821', u = '';
 
 function save(){ localStorage.setItem('transbordo', JSON.stringify(cs)); }
 
+function syncData(){
+  let x = JSON.parse(localStorage.getItem('transbordo') || 'null');
+  if(x){ cs = x; render(); show(); }
+}
+
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function nova(){
+  let today = getTodayString();
   let c = {
     id: nid.value,
     d: nd.value,
@@ -142,8 +160,11 @@ function nova(){
     conf: '-',
     s: 'Separação',
     dock: '',
-    startTime: null,
-    endTime: null
+    confStart: null,
+    confEnd: null,
+    loadStart: null,
+    loadEnd: null,
+    createdAt: today
   };
   if(!c.id || !c.d || !c.p || !c.c) return alert('Preencha todos os campos da carga');
   if(cs.some(x => x.id == c.id)) return alert('Carga já existe');
@@ -172,16 +193,26 @@ function formatTime(isoStr) {
 }
 
 function render(){
-  rows.innerHTML = cs.map(c => `
+  let today = getTodayString();
+  let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
+
+  if (cargasHoje.length === 0) {
+    rows.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#888;padding:20px;">Nenhuma carga cadastrada hoje.</td></tr>`;
+    return;
+  }
+
+  rows.innerHTML = cargasHoje.map(c => `
     <tr>
       <td>${c.id}</td>
-      <td>${c.d}</td>
-      <td>${c.p}</td>
+      <td>${c.d}<br><small style="color:#666">${c.p}</small></td>
       <td>${c.c}</td>
       <td>${c.conf || '-'}</td>
-      <td>${formatTime(c.startTime)}</td>
-      <td>${formatTime(c.endTime)}</td>
-      <td><strong>${calcDuration(c.startTime, c.endTime)}</strong></td>
+      <td>${formatTime(c.confStart)}</td>
+      <td>${formatTime(c.confEnd)}</td>
+      <td><strong>${calcDuration(c.confStart, c.confEnd)}</strong></td>
+      <td>${formatTime(c.loadStart)}</td>
+      <td>${formatTime(c.loadEnd)}</td>
+      <td><strong>${calcDuration(c.loadStart, c.loadEnd)}</strong></td>
       <td>${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</td>
       <td>
         <button class="btn dark" onclick="status('${c.id}')">Avançar Status</button>
@@ -201,21 +232,31 @@ function status(id){
 
   let nextStatus = st[currentIndex + 1];
 
+  // Início da Conferência
   if (nextStatus === 'Conferindo') {
     let confName = prompt('Digite o nome do conferente:', c.conf !== '-' ? c.conf : '');
     if (!confName) return;
     c.conf = confName;
-    if (!c.startTime) c.startTime = new Date().toISOString();
+    c.confStart = new Date().toISOString();
   }
 
+  // Fim da Conferência / Início do Carregamento
+  if (nextStatus === 'Pronto para carregar') {
+    let now = new Date().toISOString();
+    if (!c.confEnd) c.confEnd = now;
+    c.loadStart = now;
+  }
+
+  // Pede o número da doca
   if (nextStatus === 'Doca') {
     let dockNum = prompt('Digite o número da Doca:', '04');
     if (!dockNum) return;
     c.dock = dockNum;
   }
 
+  // Fim do Carregamento
   if (nextStatus === 'Finalizado') {
-    c.endTime = new Date().toISOString();
+    c.loadEnd = new Date().toISOString();
   }
 
   c.s = nextStatus;
@@ -230,18 +271,22 @@ function exportarCSV() {
   if (cs.length === 0) return alert('Nenhuma carga registrada para exportar.');
   
   let csvContent = "\uFEFF";
-  csvContent += "Carga;Motorista;Placa;Destino;Conferente;Inicio;Termino;Duracao;Status\n";
+  csvContent += "Data;Carga;Motorista;Placa;Destino;Conferente;Inicio Conf;Fim Conf;Tempo Conf;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
   
   cs.forEach(c => {
     let row = [
+      `"${c.createdAt || getTodayString()}"`,
       `"${c.id}"`,
       `"${c.d}"`,
       `"${c.p}"`,
       `"${c.c}"`,
       `"${c.conf || '-'}"`,
-      `"${formatTime(c.startTime)}"`,
-      `"${formatTime(c.endTime)}"`,
-      `"${calcDuration(c.startTime, c.endTime)}"`,
+      `"${formatTime(c.confStart)}"`,
+      `"${formatTime(c.confEnd)}"`,
+      `"${calcDuration(c.confStart, c.confEnd)}"`,
+      `"${formatTime(c.loadStart)}"`,
+      `"${formatTime(c.loadEnd)}"`,
+      `"${calcDuration(c.loadStart, c.loadEnd)}"`,
       `"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"`
     ];
     csvContent += row.join(";") + "\n";
@@ -313,9 +358,8 @@ function show(){
   mconf.textContent = `Conferente: ${c.conf || '-'}`;
   
   mtimes.innerHTML = `
-    <strong>Início:</strong> ${formatTime(c.startTime)} | 
-    <strong>Término:</strong> ${formatTime(c.endTime)} | 
-    <strong>Tempo de Carregamento:</strong> ${calcDuration(c.startTime, c.endTime)}
+    <strong>🔍 Conferência:</strong> ${formatTime(c.confStart)} às ${formatTime(c.confEnd)} (${calcDuration(c.confStart, c.confEnd)})<br>
+    <strong>📦 Carregamento:</strong> ${formatTime(c.loadStart)} às ${formatTime(c.loadEnd)} (${calcDuration(c.loadStart, c.loadEnd)})
   `;
 
   steps.innerHTML = st.map((x, j) => `
@@ -334,10 +378,9 @@ async function push(){
   if(p === 'granted') new Notification('TRANSBORDO', { body: 'Notificações ativadas para a carga ' + cur });
 }
 
-setInterval(() => {
-  let x = JSON.parse(localStorage.getItem('transbordo') || 'null');
-  if(x){ cs = x; render(); show(); }
-}, 1000);
+setInterval(syncData, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncData(); });
+window.addEventListener('focus', syncData);
 
 checkHash();
 render();
