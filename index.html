@@ -12,10 +12,13 @@ header{background:#09111e;color:white;padding:18px;display:flex;justify-content:
 .logo span{color:#ed1c24}
 .wrap{max-width:1150px;margin:auto;padding:18px}
 .card{background:white;border-radius:12px;padding:18px;margin-bottom:15px;box-shadow:0 4px 18px #0001}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.card-header h2{margin:0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:7px;margin:5px 0 10px}
 .btn{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}
 .red{background:#ed1c24;color:white}
+.green{background:#159447;color:white}
 .dark{background:#09111e;color:white}
 .light{background:#edf1f5}
 .table-wrapper{overflow-x:auto}
@@ -53,7 +56,10 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
   </div>
 
   <div class="card">
-    <h2>Cargas</h2>
+    <div class="card-header">
+      <h2>Cargas</h2>
+      <button class="btn green" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
+    </div>
     <div class="table-wrapper">
       <table>
         <thead>
@@ -182,14 +188,12 @@ function status(id){
   
   let newStatus = st[n - 1];
 
-  // Grava o horário de início ao passar para "Conferindo" (se ainda não tiver gravado)
   if(newStatus === 'Conferindo' && !c.startTime) {
     c.startTime = new Date().toISOString();
   }
   
-  // Grava o horário de término ao passar para "Finalizado"
   if(newStatus === 'Finalizado' && !c.endTime) {
-    if(!c.startTime) c.startTime = new Date().toISOString(); // Segurança se pular direto
+    if(!c.startTime) c.startTime = new Date().toISOString();
     c.endTime = new Date().toISOString();
   }
 
@@ -200,6 +204,37 @@ function status(id){
   if(cur == id) show();
   if(c.s === 'Doca') alert('🚨 DIRIJA-SE À DOCA ' + c.dock);
   if(c.s === 'Finalizado') alert('✅ CARREGAMENTO FINALIZADO');
+}
+
+function exportarCSV() {
+  if (cs.length === 0) return alert('Nenhuma carga registrada para exportar.');
+  
+  let csvContent = "\uFEFF"; // BOM para acentuação no Excel
+  csvContent += "Carga;Motorista;Placa;Destino;Conferente;Inicio;Termino;Duracao;Status\n";
+  
+  cs.forEach(c => {
+    let row = [
+      `"${c.id}"`,
+      `"${c.d}"`,
+      `"${c.p}"`,
+      `"${c.c}"`,
+      `"${c.conf || '-'}"`,
+      `"${formatTime(c.startTime)}"`,
+      `"${formatTime(c.endTime)}"`,
+      `"${calcDuration(c.startTime, c.endTime)}"`,
+      `"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"`
+    ];
+    csvContent += row.join(";") + "\n";
+  });
+
+  let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement("a");
+  a.setAttribute("href", url);
+  a.setAttribute("download", `relatorio_transbordo_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 function link(id){
