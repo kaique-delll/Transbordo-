@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TRANSBORDO</title>
+<title>TRANSBORDO - Acompanhamento</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font:14px Arial;background:#eef1f5;color:#172231}
-header{background:#09111e;color:white;padding:18px;display:flex;justify-content:space-between}
+header{background:#09111e;color:white;padding:18px;display:flex;justify-content:space-between;align-items:center}
 .logo{font-size:30px;font-weight:900}
 .logo span{color:#ed1c24}
 .wrap{max-width:1150px;margin:auto;padding:18px}
@@ -28,20 +28,23 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 .active{color:white}
 .notice{text-align:center;padding:16px;border:2px solid #f57c00;border-radius:9px;background:#fff1e6;color:#954700;font-weight:900;font-size:18px}
 .done{border-color:#159447;background:#eaf8ef;color:#087136}
-.hidden{display:none}
+.hidden{display:none !important}
 .modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center}
 .modalbox{background:white;padding:20px;border-radius:12px;width:min(500px,92vw);text-align:center}
 .qr{width:180px;height:180px;margin:15px auto}
 .qr img{width:100%}
 .times-info{font-size:12px;color:#555;margin-top:8px;background:#f8f9fa;padding:10px;border-radius:6px}
+.search-box{display:flex;gap:8px;margin-bottom:15px}
+.search-box input{margin:0}
 </style>
 </head>
 <body>
 <header>
   <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#aaa">TRANSBORDO</small></div>
-  <button class="btn light" onclick="motorista('45821')">📱 Motorista</button>
+  <button id="btnSwitch" class="btn light" onclick="toggleModo()">📱 Painel Motorista</button>
 </header>
 
+<!-- PAINEL ADMINISTRATIVO -->
 <div class="wrap" id="adm">
   <div class="card">
     <h2>Nova carga</h2>
@@ -81,8 +84,17 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
   </div>
 </div>
 
+<!-- PAINEL EXCLUSIVO DO MOTORISTA -->
 <div class="wrap hidden" id="mot">
   <div class="card">
+    <h2>Consultar Carga</h2>
+    <div class="search-box">
+      <input id="searchId" placeholder="Digite o número da carga...">
+      <button class="btn dark" onclick="buscarCarga()">Buscar</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardStatus">
     <div id="md" style="font-size:24px;font-weight:bold"></div>
     <div id="mi"></div>
     <div id="mconf" style="font-weight:bold;color:#555;margin-top:4px"></div>
@@ -90,16 +102,15 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
     <div id="steps"></div>
     <div id="notice" class="notice"></div>
     <button class="btn red" style="width:100%;margin-top:10px" onclick="push()">🔔 Ativar notificações</button>
-    <button class="btn light" style="width:100%;margin-top:8px" onclick="adm()">Voltar</button>
   </div>
 </div>
 
 <div class="modal" id="modal">
   <div class="modalbox">
-    <h2>Link da carga</h2>
+    <h2>Link do Motorista</h2>
     <div class="qr"><img id="qr"></div>
     <p id="url" style="word-break:break-all"></p>
-    <button class="btn red" onclick="copy()">Copiar</button>
+    <button class="btn red" onclick="copy()">Copiar Link</button>
     <button class="btn light" onclick="modal.style.display='none'">Fechar</button>
   </div>
 </div>
@@ -174,7 +185,7 @@ function render(){
       <td>${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</td>
       <td>
         <button class="btn dark" onclick="status('${c.id}')">Avançar Status</button>
-        <button class="btn light" onclick="link('${c.id}')">🔗 Link</button>
+        <button class="btn light" onclick="link('${c.id}')">🔗 Link Motorista</button>
       </td>
     </tr>
   `).join('');
@@ -190,22 +201,19 @@ function status(id){
 
   let nextStatus = st[currentIndex + 1];
 
-  // Se avançar para Conferindo, pede o nome do conferente
   if (nextStatus === 'Conferindo') {
     let confName = prompt('Digite o nome do conferente:', c.conf !== '-' ? c.conf : '');
-    if (!confName) return; // Cancela a atualização se não digitar
+    if (!confName) return;
     c.conf = confName;
     if (!c.startTime) c.startTime = new Date().toISOString();
   }
 
-  // Se avançar para Doca, pede o número da doca
   if (nextStatus === 'Doca') {
     let dockNum = prompt('Digite o número da Doca:', '04');
-    if (!dockNum) return; // Cancela se não informar a doca
+    if (!dockNum) return;
     c.dock = dockNum;
   }
 
-  // Se avançar para Finalizado, grava o horário final
   if (nextStatus === 'Finalizado') {
     c.endTime = new Date().toISOString();
   }
@@ -259,21 +267,46 @@ function link(id){
 
 function copy(){ navigator.clipboard?.writeText(u); alert('Link copiado'); }
 
-function motorista(id){
-  cur = id;
-  adm.style.display = 'none';
-  mot.classList.remove('hidden');
+function toggleModo(){
+  if (adm.classList.contains('hidden')) {
+    adm.classList.remove('hidden');
+    mot.classList.add('hidden');
+    btnSwitch.textContent = '📱 Painel Motorista';
+    window.location.hash = '';
+  } else {
+    adm.classList.add('hidden');
+    mot.classList.remove('hidden');
+    btnSwitch.textContent = '⚙️ Painel ADM';
+    window.location.hash = 'motorista';
+    show();
+  }
+}
+
+function buscarCarga(){
+  let val = searchId.value.trim();
+  if(!val) return alert('Digite o número da carga');
+  let exists = cs.find(x => x.id == val);
+  if(!exists) return alert('Carga não encontrada');
+  cur = val;
   show();
 }
 
-function adm(){
-  mot.classList.add('hidden');
-  adm.style.display = 'block';
-  render();
+function checkHash(){
+  if (location.hash.includes('motorista')) {
+    let match = location.hash.match(/motorista=(\w+)/);
+    if (match && match[1]) {
+      cur = match[1];
+    }
+    adm.classList.add('hidden');
+    mot.classList.remove('hidden');
+    btnSwitch.textContent = '⚙️ Painel ADM';
+    show();
+  }
 }
 
 function show(){
   let c = cs.find(x => x.id == cur) || cs[0];
+  if (!c) return;
   let i = st.indexOf(c.s);
   md.textContent = c.d;
   mi.textContent = `Carga ${c.id} · ${c.p} · ${c.c}`;
@@ -306,6 +339,7 @@ setInterval(() => {
   if(x){ cs = x; render(); show(); }
 }, 1000);
 
+checkHash();
 render();
 </script>
 </body>
