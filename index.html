@@ -14,7 +14,7 @@ header{background:#09111e;color:white;padding:18px;display:flex;justify-content:
 .card{background:white;border-radius:12px;padding:18px;margin-bottom:15px;box-shadow:0 4px 18px #0001}
 .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
 .card-header h2{margin:0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:7px;margin:5px 0 10px}
 .btn{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}
 .red{background:#ed1c24;color:white}
@@ -46,11 +46,10 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
   <div class="card">
     <h2>Nova carga</h2>
     <div class="grid">
-      <div>Número<input id="nid" value="45821"></div>
-      <div>Motorista<input id="nd" value="João Silva"></div>
+      <div>Número da Carga<input id="nid" value="45821"></div>
       <div>Placa<input id="np" value="ABC-1D23"></div>
+      <div>Motorista<input id="nd" value="João Silva"></div>
       <div>Destino<input id="nc" value="Ribeirão Preto - SP"></div>
-      <div>Conferente<input id="nconf" value="Carlos Santos"></div>
     </div>
     <button class="btn red" onclick="nova()">Cadastrar carga</button>
   </div>
@@ -114,7 +113,7 @@ let cs = JSON.parse(localStorage.getItem('transbordo') || 'null') || [{
   d: 'João Silva',
   p: 'ABC-1D23',
   c: 'Ribeirão Preto - SP',
-  conf: 'Carlos Santos',
+  conf: '-',
   s: 'Separação',
   dock: '',
   startTime: null,
@@ -129,13 +128,13 @@ function nova(){
     d: nd.value,
     p: np.value,
     c: nc.value,
-    conf: nconf.value || '-',
+    conf: '-',
     s: 'Separação',
     dock: '',
     startTime: null,
     endTime: null
   };
-  if(!c.id || !c.d || !c.p || !c.c) return alert('Preencha os campos obrigatórios');
+  if(!c.id || !c.d || !c.p || !c.c) return alert('Preencha todos os campos da carga');
   if(cs.some(x => x.id == c.id)) return alert('Carga já existe');
   cs.unshift(c);
   save();
@@ -174,7 +173,7 @@ function render(){
       <td><strong>${calcDuration(c.startTime, c.endTime)}</strong></td>
       <td>${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</td>
       <td>
-        <button class="btn dark" onclick="status('${c.id}')">Atualizar</button>
+        <button class="btn dark" onclick="status('${c.id}')">Avançar Status</button>
         <button class="btn light" onclick="link('${c.id}')">🔗 Link</button>
       </td>
     </tr>
@@ -183,33 +182,46 @@ function render(){
 
 function status(id){
   let c = cs.find(x => x.id == id);
-  let n = Number(prompt('1 Separação | 2 Conferindo | 3 Pronto | 4 Doca | 5 Finalizado', st.indexOf(c.s) + 1));
-  if(n < 1 || n > 5) return;
+  let currentIndex = st.indexOf(c.s);
   
-  let newStatus = st[n - 1];
-
-  if(newStatus === 'Conferindo' && !c.startTime) {
-    c.startTime = new Date().toISOString();
+  if (currentIndex >= st.length - 1) {
+    return alert('Esta carga já está Finalizada!');
   }
-  
-  if(newStatus === 'Finalizado' && !c.endTime) {
-    if(!c.startTime) c.startTime = new Date().toISOString();
+
+  let nextStatus = st[currentIndex + 1];
+
+  // Se avançar para Conferindo, pede o nome do conferente
+  if (nextStatus === 'Conferindo') {
+    let confName = prompt('Digite o nome do conferente:', c.conf !== '-' ? c.conf : '');
+    if (!confName) return; // Cancela a atualização se não digitar
+    c.conf = confName;
+    if (!c.startTime) c.startTime = new Date().toISOString();
+  }
+
+  // Se avançar para Doca, pede o número da doca
+  if (nextStatus === 'Doca') {
+    let dockNum = prompt('Digite o número da Doca:', '04');
+    if (!dockNum) return; // Cancela se não informar a doca
+    c.dock = dockNum;
+  }
+
+  // Se avançar para Finalizado, grava o horário final
+  if (nextStatus === 'Finalizado') {
     c.endTime = new Date().toISOString();
   }
 
-  c.s = newStatus;
-  c.dock = c.s === 'Doca' ? (prompt('Doca:', '04') || '04') : '';
+  c.s = nextStatus;
   save();
   render();
-  if(cur == id) show();
-  if(c.s === 'Doca') alert('🚨 DIRIJA-SE À DOCA ' + c.dock);
-  if(c.s === 'Finalizado') alert('✅ CARREGAMENTO FINALIZADO');
+  if (cur == id) show();
+  if (c.s === 'Doca') alert('🚨 DIRIJA-SE À DOCA ' + c.dock);
+  if (c.s === 'Finalizado') alert('✅ CARREGAMENTO FINALIZADO');
 }
 
 function exportarCSV() {
   if (cs.length === 0) return alert('Nenhuma carga registrada para exportar.');
   
-  let csvContent = "\uFEFF"; // BOM para acentuação no Excel
+  let csvContent = "\uFEFF";
   csvContent += "Carga;Motorista;Placa;Destino;Conferente;Inicio;Termino;Duracao;Status\n";
   
   cs.forEach(c => {
