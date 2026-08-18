@@ -28,6 +28,11 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 .status-online{font-size:11px;background:#159447;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
 .hidden{display:none !important}
 
+/* Estilo da Área de Importação */
+.import-box{background:#f8f9fa;border:2px dashed #ccc;padding:15px;border-radius:8px;margin-top:15px;text-align:center}
+.import-box input[type="file"]{display:none}
+.import-btn{display:inline-block;background:#09111e;color:white;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:bold}
+
 /* Cards do Painel do Motorista */
 .driver-card{border:1px solid #e0e0e0;border-radius:10px;padding:15px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px #0000000d}
 .driver-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
@@ -39,6 +44,9 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 <!-- Scripts do Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<!-- Biblioteca para ler arquivos Excel / CSV -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <header>
@@ -49,14 +57,25 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 <!-- PAINEL ADMINISTRATIVO -->
 <div class="wrap" id="adm">
   <div class="card">
-    <h2>Nova Carga</h2>
+    <h2>Cadastrar Cargas</h2>
+    
+    <!-- Formulário Manual Expresso -->
     <div class="grid">
       <div>Número da Carga<input id="nid" placeholder="Ex: 45821"></div>
       <div>Placa<input id="np" placeholder="Ex: ABC-1D23"></div>
       <div>Motorista<input id="nd" placeholder="Ex: João Silva"></div>
       <div>Destino<input id="nc" placeholder="Ex: Ribeirão Preto - SP"></div>
     </div>
-    <button class="btn red" onclick="nova()">Cadastrar Carga</button>
+    <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
+
+    <!-- Área de Importação por Arquivo (Excel / CSV) -->
+    <div class="import-box">
+      <p style="margin:0 0 10px 0;color:#555;"><strong>📁 Importar lista via arquivo (Excel ou CSV)</strong></p>
+      <label class="import-btn">
+        📂 Selecionar Planilha (.xlsx ou .csv)
+        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" onchange="importarArquivo(event)">
+      </label>
+    </div>
   </div>
 
   <div class="card">
@@ -84,7 +103,7 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
   </div>
 </div>
 
-<!-- PAINEL DOS MOTORISTAS (EXIBE TODAS AS CARGAS DO DIA) -->
+<!-- PAINEL DOS MOTORISTAS -->
 <div class="wrap hidden" id="mot">
   <div class="card">
     <h2>🚚 Painel de Cargas do Dia</h2>
@@ -113,7 +132,6 @@ const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado']
 
 let cs = [];
 
-// Escuta em tempo real no banco de dados para sincronizar todos os celulares
 db.ref('cargas').on('value', (snapshot) => {
   const data = snapshot.val();
   cs = data ? Object.values(data) : [];
@@ -144,8 +162,65 @@ function nova(){
   };
 
   db.ref('cargas/' + idVal).set(c);
-
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
+}
+
+// IMPORTAÇÃO EM MASSA VIA ARQUIVO (EXCEL / CSV)
+function importarArquivo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Converte planilha em lista de objetos JSON
+    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+    let cadastrados = 0;
+    let today = getTodayString();
+    let updates = {};
+
+    json.forEach(row => {
+      // Mapeia colunas (aceita minúsculas e maiúsculas)
+      let idVal = String(row.carga || row.Carga || row.CARGA || '').trim();
+      let motoristaVal = String(row.motorista || row.Motorista || row.MOTORISTA || '').trim();
+      let placaVal = String(row.placa || row.Placa || row.PLACA || '').trim();
+      let destinoVal = String(row.destino || row.Destino || row.DESTINO || '').trim();
+
+      if (idVal && !cs.some(x => x.id == idVal)) {
+        updates['cargas/' + idVal] = {
+          id: idVal,
+          d: motoristaVal || '-',
+          p: placaVal || '-',
+          c: destinoVal || '-',
+          s: 'Separação',
+          dock: '',
+          loadStart: null,
+          loadEnd: null,
+          createdAt: today
+        };
+        cadastrados++;
+      }
+    });
+
+    if (cadastrados > 0) {
+      // Envia todas as cargas de uma vez para o Firebase
+      db.ref().update(updates).then(() => {
+        alert(`✅ ${cadastrados} cargas importadas com sucesso!`);
+      });
+    } else {
+      alert('Nenhuma nova carga válida encontrada na planilha.');
+    }
+
+    // Limpa o input do arquivo
+    e.target.value = '';
+  };
+
+  reader.readAsArrayBuffer(file);
 }
 
 function calcDuration(startStr, endStr) {
@@ -166,7 +241,6 @@ function formatTime(isoStr) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Renderiza a tabela do Painel Administrativo
 function renderADM(){
   let today = getTodayString();
   let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
@@ -196,7 +270,6 @@ function renderADM(){
   }).join('');
 }
 
-// Renderiza o Painel Público dos Motoristas
 function renderMotoristas(){
   let today = getTodayString();
   let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
@@ -238,7 +311,6 @@ function status(id){
 
   let nextStatus = st[currentIndex + 1];
 
-  // Inicia a contagem do tempo de carregamento ao chegar no status 'Pronto para carregar'
   if (nextStatus === 'Pronto para carregar' && !c.loadStart) {
     c.loadStart = new Date().toISOString();
   }
