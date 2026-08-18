@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TRANSBORDO - Acompanhamento</title>
+<title>TRANSBORDO - Acompanhamento em Tempo Real</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font:14px Arial;background:#eef1f5;color:#172231}
@@ -23,38 +23,40 @@ input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:7px;mar
 .light{background:#edf1f5}
 .table-wrapper{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:11px}
-.step{padding:12px;margin:7px 0;border-radius:8px;background:#edf0f3;color:#899}
-.active{color:white}
-.notice{text-align:center;padding:16px;border:2px solid #f57c00;border-radius:9px;background:#fff1e6;color:#954700;font-weight:900;font-size:18px}
-.done{border-color:#159447;background:#eaf8ef;color:#087136}
+th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
+.step-badge{display:inline-block;padding:4px 8px;border-radius:6px;color:white;font-weight:bold;font-size:11px}
+.status-online{font-size:11px;background:#159447;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
 .hidden{display:none !important}
-.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center}
-.modalbox{background:white;padding:20px;border-radius:12px;width:min(500px,92vw);text-align:center}
-.qr{width:180px;height:180px;margin:15px auto}
-.qr img{width:100%}
-.times-info{font-size:12px;color:#555;margin-top:8px;background:#f8f9fa;padding:10px;border-radius:6px;line-height:1.6}
-.search-box{display:flex;gap:8px;margin-bottom:15px}
-.search-box input{margin:0}
+
+/* Cards do Painel do Motorista */
+.driver-card{border:1px solid #e0e0e0;border-radius:10px;padding:15px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px #0000000d}
+.driver-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.driver-card-title{font-size:16px;font-weight:bold;color:#09111e}
+.driver-card-info{font-size:13px;color:#555;margin-bottom:10px;line-height:1.4}
+.driver-card-status{text-align:center;padding:10px;border-radius:6px;font-weight:bold;font-size:14px;margin-top:8px}
 </style>
+
+<!-- Scripts do Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <header>
-  <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#aaa">TRANSBORDO</small></div>
-  <button id="btnSwitch" class="btn light" onclick="toggleModo()">📱 Painel Motorista</button>
+  <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#aaa">TRANSBORDO <span class="status-online">AO VIVO</span></small></div>
+  <button id="btnSwitch" class="btn light" onclick="toggleModo()">📱 Painel Motoristas</button>
 </header>
 
 <!-- PAINEL ADMINISTRATIVO -->
 <div class="wrap" id="adm">
   <div class="card">
-    <h2>Nova carga</h2>
+    <h2>Nova Carga</h2>
     <div class="grid">
-      <div>Número da Carga<input id="nid" value="45821"></div>
-      <div>Placa<input id="np" value="ABC-1D23"></div>
-      <div>Motorista<input id="nd" value="João Silva"></div>
-      <div>Destino<input id="nc" value="Ribeirão Preto - SP"></div>
+      <div>Número da Carga<input id="nid" placeholder="Ex: 45821"></div>
+      <div>Placa<input id="np" placeholder="Ex: ABC-1D23"></div>
+      <div>Motorista<input id="nd" placeholder="Ex: João Silva"></div>
+      <div>Destino<input id="nc" placeholder="Ex: Ribeirão Preto - SP"></div>
     </div>
-    <button class="btn red" onclick="nova()">Cadastrar carga</button>
+    <button class="btn red" onclick="nova()">Cadastrar Carga</button>
   </div>
 
   <div class="card">
@@ -69,14 +71,10 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:11px}
             <th>Carga</th>
             <th>Motorista / Placa</th>
             <th>Destino</th>
-            <th>Conferente</th>
-            <th>Início Conf.</th>
-            <th>Fim Conf.</th>
-            <th>Tempo Conf.</th>
             <th>Início Carreg.</th>
             <th>Fim Carreg.</th>
             <th>Tempo Carreg.</th>
-            <th>Status</th>
+            <th>Status Atual</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -86,65 +84,42 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:11px}
   </div>
 </div>
 
-<!-- PAINEL EXCLUSIVO DO MOTORISTA -->
+<!-- PAINEL DOS MOTORISTAS (EXIBE TODAS AS CARGAS DO DIA) -->
 <div class="wrap hidden" id="mot">
   <div class="card">
-    <h2>Consultar Carga</h2>
-    <div class="search-box">
-      <input id="searchId" placeholder="Digite o número da carga...">
-      <button class="btn dark" onclick="buscarCarga()">Buscar</button>
-    </div>
-  </div>
-
-  <div class="card" id="cardStatus">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <div id="md" style="font-size:24px;font-weight:bold"></div>
-      <button class="btn green" style="padding:6px 12px;font-size:12px;" onclick="syncData()">🔄 Atualizar Agora</button>
-    </div>
-    <div id="mi"></div>
-    <div id="mconf" style="font-weight:bold;color:#555;margin-top:4px"></div>
-    <div id="mtimes" class="times-info"></div>
-    <div id="steps"></div>
-    <div id="notice" class="notice"></div>
-    <button class="btn red" style="width:100%;margin-top:10px" onclick="push()">🔔 Ativar notificações</button>
-  </div>
-</div>
-
-<div class="modal" id="modal">
-  <div class="modalbox">
-    <h2>Link do Motorista</h2>
-    <div class="qr"><img id="qr"></div>
-    <p id="url" style="word-break:break-all"></p>
-    <button class="btn red" onclick="copy()">Copiar Link</button>
-    <button class="btn light" onclick="modal.style.display='none'">Fechar</button>
+    <h2>🚚 Painel de Cargas do Dia</h2>
+    <p style="color:#666;font-size:12px;margin-top:-5px">Acompanhamento de status em tempo real</p>
+    <div id="driverList"></div>
   </div>
 </div>
 
 <script>
+// CONFIGURAÇÃO DO FIREBASE (Substitua com suas chaves do Firebase Console)
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://SEU_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "SEU_PROJECT_ID",
+  storageBucket: "SEU_PROJECT_ID.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado'],
       co=['#e0a400','#1976d2','#f57c00','#7138c8','#159447'];
 
-let cs = JSON.parse(localStorage.getItem('transbordo') || 'null') || [{
-  id: '45821',
-  d: 'João Silva',
-  p: 'ABC-1D23',
-  c: 'Ribeirão Preto - SP',
-  conf: '-',
-  s: 'Separação',
-  dock: '',
-  confStart: null,
-  confEnd: null,
-  loadStart: null,
-  loadEnd: null,
-  createdAt: new Date().toISOString().slice(0, 10)
-}], cur = '45821', u = '';
+let cs = [];
 
-function save(){ localStorage.setItem('transbordo', JSON.stringify(cs)); }
-
-function syncData(){
-  let x = JSON.parse(localStorage.getItem('transbordo') || 'null');
-  if(x){ cs = x; render(); show(); }
-}
+// Escuta em tempo real no banco de dados para sincronizar todos os celulares
+db.ref('cargas').on('value', (snapshot) => {
+  const data = snapshot.val();
+  cs = data ? Object.values(data) : [];
+  renderADM();
+  renderMotoristas();
+});
 
 function getTodayString() {
   return new Date().toISOString().slice(0, 10);
@@ -152,25 +127,25 @@ function getTodayString() {
 
 function nova(){
   let today = getTodayString();
+  let idVal = nid.value.trim();
+  if(!idVal || !nd.value || !np.value || !nc.value) return alert('Preencha todos os campos da carga');
+  if(cs.some(x => x.id == idVal)) return alert('Carga já existe');
+
   let c = {
-    id: nid.value,
+    id: idVal,
     d: nd.value,
     p: np.value,
     c: nc.value,
-    conf: '-',
     s: 'Separação',
     dock: '',
-    confStart: null,
-    confEnd: null,
     loadStart: null,
     loadEnd: null,
     createdAt: today
   };
-  if(!c.id || !c.d || !c.p || !c.c) return alert('Preencha todos os campos da carga');
-  if(cs.some(x => x.id == c.id)) return alert('Carga já existe');
-  cs.unshift(c);
-  save();
-  render();
+
+  db.ref('cargas/' + idVal).set(c);
+
+  nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
 function calcDuration(startStr, endStr) {
@@ -179,7 +154,6 @@ function calcDuration(startStr, endStr) {
   let end = endStr ? new Date(endStr) : new Date();
   let diffMs = end - start;
   if (diffMs < 0) return '-';
-  
   let mins = Math.floor(diffMs / 60000);
   let hrs = Math.floor(mins / 60);
   mins = mins % 60;
@@ -192,106 +166,108 @@ function formatTime(isoStr) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-function render(){
+// Renderiza a tabela do Painel Administrativo
+function renderADM(){
   let today = getTodayString();
   let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
 
   if (cargasHoje.length === 0) {
-    rows.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#888;padding:20px;">Nenhuma carga cadastrada hoje.</td></tr>`;
+    rows.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:20px;">Nenhuma carga cadastrada hoje.</td></tr>`;
     return;
   }
 
-  rows.innerHTML = cargasHoje.map(c => `
-    <tr>
-      <td>${c.id}</td>
-      <td>${c.d}<br><small style="color:#666">${c.p}</small></td>
-      <td>${c.c}</td>
-      <td>${c.conf || '-'}</td>
-      <td>${formatTime(c.confStart)}</td>
-      <td>${formatTime(c.confEnd)}</td>
-      <td><strong>${calcDuration(c.confStart, c.confEnd)}</strong></td>
-      <td>${formatTime(c.loadStart)}</td>
-      <td>${formatTime(c.loadEnd)}</td>
-      <td><strong>${calcDuration(c.loadStart, c.loadEnd)}</strong></td>
-      <td>${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</td>
-      <td>
-        <button class="btn dark" onclick="status('${c.id}')">Avançar Status</button>
-        <button class="btn light" onclick="link('${c.id}')">🔗 Link Motorista</button>
-      </td>
-    </tr>
-  `).join('');
+  rows.innerHTML = cargasHoje.map(c => {
+    let statusIndex = st.indexOf(c.s);
+    let color = co[statusIndex] || '#333';
+    return `
+      <tr>
+        <td><strong>${c.id}</strong></td>
+        <td>${c.d}<br><small style="color:#666">${c.p}</small></td>
+        <td>${c.c}</td>
+        <td>${formatTime(c.loadStart)}</td>
+        <td>${formatTime(c.loadEnd)}</td>
+        <td><strong>${calcDuration(c.loadStart, c.loadEnd)}</strong></td>
+        <td><span class="step-badge" style="background:${color}">${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</span></td>
+        <td>
+          <button class="btn dark" onclick="status('${c.id}')">Avançar Status</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Renderiza o Painel Público dos Motoristas
+function renderMotoristas(){
+  let today = getTodayString();
+  let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
+
+  if (cargasHoje.length === 0) {
+    driverList.innerHTML = `<div style="text-align:center;color:#888;padding:20px;">Nenhuma carga cadastrada para hoje.</div>`;
+    return;
+  }
+
+  driverList.innerHTML = cargasHoje.map(c => {
+    let statusIndex = st.indexOf(c.s);
+    let color = co[statusIndex] || '#333';
+    let isDoca = c.s === 'Doca';
+    let isDone = c.s === 'Finalizado';
+
+    return `
+      <div class="driver-card">
+        <div class="driver-card-header">
+          <div class="driver-card-title">Carga #${c.id}</div>
+          <span class="step-badge" style="background:${color}">${c.s}</span>
+        </div>
+        <div class="driver-card-info">
+          <strong>Motorista:</strong> ${c.d} | <strong>Placa:</strong> ${c.p}<br>
+          <strong>Destino:</strong> ${c.c}<br>
+          ${c.loadStart ? `<strong>Carregamento:</strong> Início às ${formatTime(c.loadStart)}` : ''}
+        </div>
+        <div class="driver-card-status" style="background:${isDone ? '#eaf8ef' : (isDoca ? '#fff1e6' : '#f0f4f8')}; color:${isDone ? '#087136' : (isDoca ? '#954700' : '#333')}; border: 1px solid ${color}">
+          ${isDoca ? '🚨 DIRIJA-SE À DOCA ' + c.dock : (isDone ? '✅ CARREGAMENTO FINALIZADO' : '⏳ Status: ' + c.s.toUpperCase())}
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function status(id){
   let c = cs.find(x => x.id == id);
   let currentIndex = st.indexOf(c.s);
-  
-  if (currentIndex >= st.length - 1) {
-    return alert('Esta carga já está Finalizada!');
-  }
+  if (currentIndex >= st.length - 1) return alert('Esta carga já está Finalizada!');
 
   let nextStatus = st[currentIndex + 1];
 
-  // Início da Conferência
-  if (nextStatus === 'Conferindo') {
-    let confName = prompt('Digite o nome do conferente:', c.conf !== '-' ? c.conf : '');
-    if (!confName) return;
-    c.conf = confName;
-    c.confStart = new Date().toISOString();
+  // Inicia a contagem do tempo de carregamento ao chegar no status 'Pronto para carregar'
+  if (nextStatus === 'Pronto para carregar' && !c.loadStart) {
+    c.loadStart = new Date().toISOString();
   }
 
-  // Fim da Conferência / Início do Carregamento
-  if (nextStatus === 'Pronto para carregar') {
-    let now = new Date().toISOString();
-    if (!c.confEnd) c.confEnd = now;
-    c.loadStart = now;
-  }
-
-  // Pede o número da doca
   if (nextStatus === 'Doca') {
     let dockNum = prompt('Digite o número da Doca:', '04');
     if (!dockNum) return;
     c.dock = dockNum;
   }
 
-  // Fim do Carregamento
   if (nextStatus === 'Finalizado') {
     c.loadEnd = new Date().toISOString();
   }
 
   c.s = nextStatus;
-  save();
-  render();
-  if (cur == id) show();
-  if (c.s === 'Doca') alert('🚨 DIRIJA-SE À DOCA ' + c.dock);
-  if (c.s === 'Finalizado') alert('✅ CARREGAMENTO FINALIZADO');
+  db.ref('cargas/' + id).update(c);
 }
 
 function exportarCSV() {
   if (cs.length === 0) return alert('Nenhuma carga registrada para exportar.');
-  
-  let csvContent = "\uFEFF";
-  csvContent += "Data;Carga;Motorista;Placa;Destino;Conferente;Inicio Conf;Fim Conf;Tempo Conf;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
-  
+  let csvContent = "\uFEFFData;Carga;Motorista;Placa;Destino;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
   cs.forEach(c => {
     let row = [
-      `"${c.createdAt || getTodayString()}"`,
-      `"${c.id}"`,
-      `"${c.d}"`,
-      `"${c.p}"`,
-      `"${c.c}"`,
-      `"${c.conf || '-'}"`,
-      `"${formatTime(c.confStart)}"`,
-      `"${formatTime(c.confEnd)}"`,
-      `"${calcDuration(c.confStart, c.confEnd)}"`,
-      `"${formatTime(c.loadStart)}"`,
-      `"${formatTime(c.loadEnd)}"`,
-      `"${calcDuration(c.loadStart, c.loadEnd)}"`,
+      `"${c.createdAt || getTodayString()}"`, `"${c.id}"`, `"${c.d}"`, `"${c.p}"`, `"${c.c}"`,
+      `"${formatTime(c.loadStart)}"`, `"${formatTime(c.loadEnd)}"`, `"${calcDuration(c.loadStart, c.loadEnd)}"`,
       `"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"`
     ];
     csvContent += row.join(";") + "\n";
   });
-
   let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   let url = URL.createObjectURL(blob);
   let a = document.createElement("a");
@@ -302,88 +278,17 @@ function exportarCSV() {
   document.body.removeChild(a);
 }
 
-function link(id){
-  cur = id;
-  u = location.href.split('#')[0] + '#motorista=' + id;
-  url.textContent = u;
-  qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(u);
-  modal.style.display = 'flex';
-}
-
-function copy(){ navigator.clipboard?.writeText(u); alert('Link copiado'); }
-
 function toggleModo(){
   if (adm.classList.contains('hidden')) {
     adm.classList.remove('hidden');
     mot.classList.add('hidden');
-    btnSwitch.textContent = '📱 Painel Motorista';
-    window.location.hash = '';
+    btnSwitch.textContent = '📱 Painel Motoristas';
   } else {
     adm.classList.add('hidden');
     mot.classList.remove('hidden');
     btnSwitch.textContent = '⚙️ Painel ADM';
-    window.location.hash = 'motorista';
-    show();
   }
 }
-
-function buscarCarga(){
-  let val = searchId.value.trim();
-  if(!val) return alert('Digite o número da carga');
-  let exists = cs.find(x => x.id == val);
-  if(!exists) return alert('Carga não encontrada');
-  cur = val;
-  show();
-}
-
-function checkHash(){
-  if (location.hash.includes('motorista')) {
-    let match = location.hash.match(/motorista=(\w+)/);
-    if (match && match[1]) {
-      cur = match[1];
-    }
-    adm.classList.add('hidden');
-    mot.classList.remove('hidden');
-    btnSwitch.textContent = '⚙️ Painel ADM';
-    show();
-  }
-}
-
-function show(){
-  let c = cs.find(x => x.id == cur) || cs[0];
-  if (!c) return;
-  let i = st.indexOf(c.s);
-  md.textContent = c.d;
-  mi.textContent = `Carga ${c.id} · ${c.p} · ${c.c}`;
-  mconf.textContent = `Conferente: ${c.conf || '-'}`;
-  
-  mtimes.innerHTML = `
-    <strong>🔍 Conferência:</strong> ${formatTime(c.confStart)} às ${formatTime(c.confEnd)} (${calcDuration(c.confStart, c.confEnd)})<br>
-    <strong>📦 Carregamento:</strong> ${formatTime(c.loadStart)} às ${formatTime(c.loadEnd)} (${calcDuration(c.loadStart, c.loadEnd)})
-  `;
-
-  steps.innerHTML = st.map((x, j) => `
-    <div class="step ${j <= i ? 'active' : ''}" style="${j <= i ? 'background:' + co[j] : ''}">
-      ${j + 1}. ${x}${x === 'Doca' && c.dock ? ' — ' + c.dock : ''}
-    </div>
-  `).join('');
-  
-  notice.textContent = c.s === 'Doca' ? '🚨 DIRIJA-SE À DOCA ' + c.dock : (c.s === 'Finalizado' ? '✅ CARREGAMENTO FINALIZADO' : '⏳ ' + c.s.toUpperCase());
-  notice.className = 'notice ' + (c.s === 'Finalizado' ? 'done' : '');
-}
-
-async function push(){
-  if(!('Notification' in window)) return alert('Navegador sem suporte');
-  let p = await Notification.requestPermission();
-  if(p === 'granted') new Notification('TRANSBORDO', { body: 'Notificações ativadas para a carga ' + cur });
-}
-
-setInterval(syncData, 1000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) syncData(); });
-window.addEventListener('focus', syncData);
-
-checkHash();
-render();
 </script>
 </body>
 </html>
