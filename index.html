@@ -28,12 +28,12 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 .status-online{font-size:11px;background:#159447;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
 .hidden{display:none !important}
 
-/* Estilo da Área de Importação */
+/* Importação */
 .import-box{background:#f8f9fa;border:2px dashed #ccc;padding:15px;border-radius:8px;margin-top:15px;text-align:center}
 .import-box input[type="file"]{display:none}
 .import-btn{display:inline-block;background:#09111e;color:white;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:bold}
 
-/* Cards do Painel do Motorista */
+/* Cards do Motorista */
 .driver-card{border:1px solid #e0e0e0;border-radius:10px;padding:15px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px #0000000d}
 .driver-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .driver-card-title{font-size:16px;font-weight:bold;color:#09111e}
@@ -41,25 +41,23 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 .driver-card-status{text-align:center;padding:10px;border-radius:6px;font-weight:bold;font-size:14px;margin-top:8px}
 </style>
 
-<!-- Scripts do Firebase -->
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
-<!-- Biblioteca para ler arquivos Excel / CSV -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Leitor de Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <header>
-  <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#aaa">TRANSBORDO <span class="status-online">AO VIVO</span></small></div>
+  <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#aaa">TRANSBORDO <span class="status-online" id="netStatus">ONLINE</span></small></div>
   <button id="btnSwitch" class="btn light" onclick="toggleModo()">📱 Painel Motoristas</button>
 </header>
 
-<!-- PAINEL ADMINISTRATIVO -->
 <div class="wrap" id="adm">
   <div class="card">
     <h2>Cadastrar Cargas</h2>
     
-    <!-- Formulário Manual Expresso -->
     <div class="grid">
       <div>Número da Carga<input id="nid" placeholder="Ex: 45821"></div>
       <div>Placa<input id="np" placeholder="Ex: ABC-1D23"></div>
@@ -68,9 +66,8 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
     </div>
     <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
 
-    <!-- Área de Importação por Arquivo (Excel / CSV) -->
     <div class="import-box">
-      <p style="margin:0 0 10px 0;color:#555;"><strong>📁 Importar lista via arquivo (Excel ou CSV)</strong></p>
+      <p style="margin:0 0 5px 0;color:#555;"><strong>📁 Importar lista via arquivo (Excel ou CSV)</strong></p>
       <label class="import-btn">
         📂 Selecionar Planilha (.xlsx ou .csv)
         <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" onchange="importarArquivo(event)">
@@ -103,7 +100,6 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
   </div>
 </div>
 
-<!-- PAINEL DOS MOTORISTAS -->
 <div class="wrap hidden" id="mot">
   <div class="card">
     <h2>🚚 Painel de Cargas do Dia</h2>
@@ -113,7 +109,7 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 </div>
 
 <script>
-// CONFIGURAÇÃO DO FIREBASE (Substitua com suas chaves do Firebase Console)
+// CONFIGURAÇÃO DO FIREBASE (Cole suas chaves do Firebase aqui para sincronizar na nuvem)
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_PROJECT_ID.firebaseapp.com",
@@ -124,20 +120,59 @@ const firebaseConfig = {
   appId: "SEU_APP_ID"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let db = null;
+let useFirebase = false;
+
+// Tenta inicializar o Firebase
+try {
+  if (firebaseConfig.apiKey !== "SUA_API_KEY") {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    useFirebase = true;
+  }
+} catch (e) {
+  console.warn("Firebase não configurado ou com chaves inválidas. Usando modo local.");
+}
 
 const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado'],
       co=['#e0a400','#1976d2','#f57c00','#7138c8','#159447'];
 
 let cs = [];
 
-db.ref('cargas').on('value', (snapshot) => {
-  const data = snapshot.val();
-  cs = data ? Object.values(data) : [];
-  renderADM();
-  renderMotoristas();
-});
+// Carrega inicialização do banco local se não houver Firebase ativado
+if (!useFirebase) {
+  document.getElementById('netStatus').textContent = "MODO LOCAL";
+  document.getElementById('netStatus').style.background = "#f57c00";
+  let localData = localStorage.getItem('cargas_tb');
+  if (localData) cs = JSON.parse(localData);
+  setTimeout(() => { renderADM(); renderMotoristas(); }, 100);
+} else {
+  // Escuta Firebase
+  db.ref('cargas').on('value', (snapshot) => {
+    const data = snapshot.val();
+    cs = data ? Object.values(data) : [];
+    renderADM();
+    renderMotoristas();
+  }, (err) => {
+    alert("Erro ao conectar no Firebase. Verifique as Regras de Segurança no console.");
+  });
+}
+
+function salvarDados(novaLista) {
+  if (useFirebase && db) {
+    let updates = {};
+    novaLista.forEach(item => {
+      updates['cargas/' + item.id] = item;
+    });
+    db.ref().update(updates).catch(err => {
+      alert("Erro ao salvar na nuvem: " + err.message);
+    });
+  } else {
+    localStorage.setItem('cargas_tb', JSON.stringify(cs));
+    renderADM();
+    renderMotoristas();
+  }
+}
 
 function getTodayString() {
   return new Date().toISOString().slice(0, 10);
@@ -146,14 +181,23 @@ function getTodayString() {
 function nova(){
   let today = getTodayString();
   let idVal = nid.value.trim();
-  if(!idVal || !nd.value || !np.value || !nc.value) return alert('Preencha todos os campos da carga');
-  if(cs.some(x => x.id == idVal)) return alert('Carga já existe');
+  let driverVal = nd.value.trim();
+  let plateVal = np.value.trim();
+  let destVal = nc.value.trim();
+
+  if(!idVal || !driverVal || !plateVal || !destVal) {
+    return alert('Preencha todos os campos para cadastrar a carga.');
+  }
+
+  if(cs.some(x => String(x.id) === String(idVal))) {
+    return alert('A Carga #' + idVal + ' já foi cadastrada!');
+  }
 
   let c = {
     id: idVal,
-    d: nd.value,
-    p: np.value,
-    c: nc.value,
+    d: driverVal,
+    p: plateVal,
+    c: destVal,
     s: 'Separação',
     dock: '',
     loadStart: null,
@@ -161,65 +205,73 @@ function nova(){
     createdAt: today
   };
 
-  db.ref('cargas/' + idVal).set(c);
+  cs.push(c);
+  salvarDados([c]);
+
+  // Limpa formulário
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
+  alert('✅ Carga #' + idVal + ' cadastrada com sucesso!');
 }
 
-// IMPORTAÇÃO EM MASSA VIA ARQUIVO (EXCEL / CSV)
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = function(evt) {
-    const data = new Uint8Array(evt.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    
-    // Converte planilha em lista de objetos JSON
-    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-    let cadastrados = 0;
-    let today = getTodayString();
-    let updates = {};
+      if (json.length === 0) return alert('Planilha vazia.');
 
-    json.forEach(row => {
-      // Mapeia colunas (aceita minúsculas e maiúsculas)
-      let idVal = String(row.carga || row.Carga || row.CARGA || '').trim();
-      let motoristaVal = String(row.motorista || row.Motorista || row.MOTORISTA || '').trim();
-      let placaVal = String(row.placa || row.Placa || row.PLACA || '').trim();
-      let destinoVal = String(row.destino || row.Destino || row.DESTINO || '').trim();
+      let novos = [];
+      let today = getTodayString();
 
-      if (idVal && !cs.some(x => x.id == idVal)) {
-        updates['cargas/' + idVal] = {
-          id: idVal,
-          d: motoristaVal || '-',
-          p: placaVal || '-',
-          c: destinoVal || '-',
-          s: 'Separação',
-          dock: '',
-          loadStart: null,
-          loadEnd: null,
-          createdAt: today
+      json.forEach(row => {
+        let getVal = (keys) => {
+          for (let key of Object.keys(row)) {
+            let cleanKey = key.trim().toLowerCase();
+            if (keys.some(k => cleanKey === k || cleanKey.includes(k))) return String(row[key]).trim();
+          }
+          return '';
         };
-        cadastrados++;
-      }
-    });
 
-    if (cadastrados > 0) {
-      // Envia todas as cargas de uma vez para o Firebase
-      db.ref().update(updates).then(() => {
-        alert(`✅ ${cadastrados} cargas importadas com sucesso!`);
+        let idVal = getVal(['carga', 'nº carga', 'num', 'numero', 'pedido']);
+        let motoristaVal = getVal(['motorista', 'nome', 'condutor']);
+        let placaVal = getVal(['placa', 'veiculo']);
+        let destinoVal = getVal(['destino', 'cidade', 'cliente']);
+
+        if (idVal && !cs.some(x => String(x.id) === String(idVal))) {
+          let item = {
+            id: idVal,
+            d: motoristaVal || '-',
+            p: placaVal || '-',
+            c: destinoVal || '-',
+            s: 'Separação',
+            dock: '',
+            loadStart: null,
+            loadEnd: null,
+            createdAt: today
+          };
+          cs.push(item);
+          novos.push(item);
+        }
       });
-    } else {
-      alert('Nenhuma nova carga válida encontrada na planilha.');
-    }
 
-    // Limpa o input do arquivo
+      if (novos.length > 0) {
+        salvarDados(novos);
+        alert(`✅ ${novos.length} cargas importadas com sucesso!`);
+      } else {
+        alert('Nenhuma carga nova encontrada na planilha.');
+      }
+    } catch (err) {
+      alert('Erro ao processar planilha: ' + err.message);
+    }
     e.target.value = '';
   };
-
   reader.readAsArrayBuffer(file);
 }
 
@@ -305,7 +357,8 @@ function renderMotoristas(){
 }
 
 function status(id){
-  let c = cs.find(x => x.id == id);
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
   let currentIndex = st.indexOf(c.s);
   if (currentIndex >= st.length - 1) return alert('Esta carga já está Finalizada!');
 
@@ -326,7 +379,7 @@ function status(id){
   }
 
   c.s = nextStatus;
-  db.ref('cargas/' + id).update(c);
+  salvarDados([c]);
 }
 
 function exportarCSV() {
