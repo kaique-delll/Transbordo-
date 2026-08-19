@@ -3,61 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TRANSBORDO - Acompanhamento em Tempo Real</title>
+<title>TRANSBORDO - Painel de Status</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font:14px Arial;background:#eef1f5;color:#172231}
-header{background:#09111e;color:white;padding:18px;display:flex;justify-content:space-between;align-items:center}
-.logo{font-size:30px;font-weight:900}
+body{margin:0;font:14px Arial, sans-serif;background:#0d1117;color:#c9d1d9}
+header{background:#161b22;color:white;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #30363d}
+.logo{font-size:26px;font-weight:900;letter-spacing:1px}
 .logo span{color:#ed1c24}
-.wrap{max-width:1250px;margin:auto;padding:18px}
-.card{background:white;border-radius:12px;padding:18px;margin-bottom:15px;box-shadow:0 4px 18px #0001}
-.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
-.card-header h2{margin:0}
+.wrap{max-width:1300px;margin:auto;padding:15px}
+.card{background:#161b22;border-radius:10px;padding:18px;margin-bottom:15px;border:1px solid #30363d}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
-input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:7px;margin:5px 0 10px}
+input,select{width:100%;padding:10px;border:1px solid #30363d;background:#0d1117;color:white;border-radius:7px;margin:5px 0 10px}
 .btn{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}
 .red{background:#ed1c24;color:white}
-.green{background:#159447;color:white}
-.dark{background:#09111e;color:white}
-.light{background:#edf1f5}
+.green{background:#238636;color:white}
+.dark{background:#21262d;color:white;border:1px solid #30363d}
+.light{background:#30363d;color:white}
 .table-wrapper{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
-.step-badge{display:inline-block;padding:4px 8px;border-radius:6px;color:white;font-weight:bold;font-size:11px}
-.status-online{font-size:11px;background:#159447;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
+th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
+.step-badge{display:inline-block;padding:5px 10px;border-radius:6px;color:white;font-weight:bold;font-size:12px}
+.status-online{font-size:11px;background:#238636;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
 .hidden{display:none !important}
 
-/* Importação */
-.import-box{background:#f8f9fa;border:2px dashed #ccc;padding:15px;border-radius:8px;margin-top:15px;text-align:center}
-.import-box input[type="file"]{display:none}
-.import-btn{display:inline-block;background:#09111e;color:white;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:bold}
+/* ESTILO TERMINAL / AEROPORTO */
+.terminal-title{display:flex;justify-content:space-between;align-items:center;background:#090d12;padding:15px;border-radius:8px;border:1px solid #30363d;margin-bottom:15px}
+.terminal-title h2{margin:0;color:#f0f6fc;font-family:'Courier New', monospace;letter-spacing:2px;font-size:22px}
+.clock{font-family:'Courier New', monospace;font-size:22px;color:#58a6ff;font-weight:bold}
 
-/* Cards do Motorista */
-.driver-card{border:1px solid #e0e0e0;border-radius:10px;padding:15px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px #0000000d}
-.driver-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.driver-card-title{font-size:16px;font-weight:bold;color:#09111e}
-.driver-card-info{font-size:13px;color:#555;margin-bottom:10px;line-height:1.4}
-.driver-card-status{text-align:center;padding:10px;border-radius:6px;font-weight:bold;font-size:14px;margin-top:8px}
+.search-bar{margin-bottom:15px;display:flex;gap:10px}
+.search-bar input{margin:0;font-size:16px;padding:12px}
+
+.flight-board{display:flex;flex-direction:column;gap:10px}
+.board-row{display:grid;grid-template-columns:100px 1fr 140px 180px 220px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
+.board-header{background:#21262d;font-weight:bold;color:#8b949e;text-transform:uppercase;font-size:11px;letter-spacing:1px;border:none}
+
+.col-carga{font-family:'Courier New', monospace;font-size:20px;font-weight:bold;color:#f0f6fc}
+.col-driver{font-size:16px;color:#f0f6fc;font-weight:600}
+.col-driver small{display:block;color:#8b949e;font-size:13px;font-weight:normal}
+.col-dest{font-size:15px;color:#c9d1d9}
+.col-time{font-family:'Courier New', monospace;font-size:16px;color:#58a6ff;font-weight:bold}
+
+.status-box{padding:10px 14px;border-radius:6px;font-weight:900;text-align:center;font-size:14px;letter-spacing:1px;text-transform:uppercase}
+
+/* CORES DOS STATUS */
+.st-separacao{background:#388bfd1a;color:#58a6ff;border:1px solid #388bfd66}
+.st-conferindo{background:#bb80091a;color:#d29922;border:1px solid #bb800966}
+.st-pronto{background:#a371f71a;color:#a371f7;border:1px solid #a371f766}
+.st-doca{background:#da3633;color:white;animation:blink 1.2s infinite;font-size:16px;box-shadow:0 0 10px #da3633}
+.st-finalizado{background:#238636;color:white}
+
+@keyframes blink {
+  0%{opacity:1}
+  50%{opacity:0.4}
+  100%{opacity:1}
+}
+
+@media(max-width:850px){
+  .board-row{grid-template-columns:1fr 1fr;gap:10px}
+  .board-header{display:none}
+  .col-time{grid-column:span 2}
+  .status-box{grid-column:span 2}
+}
 </style>
 
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-
-<!-- Leitor de Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <header>
-  <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#aaa">TRANSBORDO <span class="status-online" id="netStatus">ONLINE</span></small></div>
+  <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#8b949e">TRANSBORDO <span class="status-online" id="netStatus">ONLINE</span></small></div>
   <button id="btnSwitch" class="btn light" onclick="toggleModo()">📱 Painel Motoristas</button>
 </header>
 
 <div class="wrap" id="adm">
   <div class="card">
     <h2>Cadastrar Cargas</h2>
-    
     <div class="grid">
       <div>Número da Carga<input id="nid" placeholder="Ex: 45821"></div>
       <div>Placa<input id="np" placeholder="Ex: ABC-1D23"></div>
@@ -66,18 +88,18 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
     </div>
     <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
 
-    <div class="import-box">
-      <p style="margin:0 0 5px 0;color:#555;"><strong>📁 Importar lista via arquivo (Excel ou CSV)</strong></p>
-      <label class="import-btn">
-        📂 Selecionar Planilha (.xlsx ou .csv)
-        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" onchange="importarArquivo(event)">
+    <div style="background:#21262d;border:2px dashed #30363d;padding:15px;border-radius:8px;margin-top:15px;text-align:center">
+      <p style="margin:0 0 10px 0;color:#c9d1d9;"><strong>📁 Importar Planilha (Excel ou CSV)</strong></p>
+      <label class="btn dark" style="cursor:pointer">
+        📂 Selecionar Arquivo (.xlsx ou .csv)
+        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
       </label>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-header">
-      <h2>Cargas do Dia</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+      <h2 style="margin:0">Cargas Cadastradas</h2>
       <button class="btn green" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
     </div>
     <div class="table-wrapper">
@@ -101,15 +123,28 @@ th,td{padding:10px;border-top:1px solid #eee;text-align:left;font-size:12px}
 </div>
 
 <div class="wrap hidden" id="mot">
-  <div class="card">
-    <h2>🚚 Painel de Cargas do Dia</h2>
-    <p style="color:#666;font-size:12px;margin-top:-5px">Acompanhamento de status em tempo real</p>
-    <div id="driverList"></div>
+  <div class="terminal-title">
+    <h2>PAINEL DE EMBARQUE / CARREGAMENTO</h2>
+    <div class="clock" id="relogio">00:00:00</div>
+  </div>
+
+  <div class="search-bar">
+    <input id="searchFilter" placeholder="🔍 Digite sua PLACA ou Nº DA CARGA para filtrar..." oninput="renderMotoristas()">
+  </div>
+
+  <div class="flight-board">
+    <div class="board-row board-header">
+      <div>CARGA</div>
+      <div>MOTORISTA / PLACA</div>
+      <div>DESTINO</div>
+      <div>CARREGAMENTO</div>
+      <div style="text-align:center">STATUS / DOCA</div>
+    </div>
+    <div id="driverBoard"></div>
   </div>
 </div>
 
 <script>
-// CONFIGURAÇÃO DO FIREBASE (Cole suas chaves do Firebase aqui para sincronizar na nuvem)
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_PROJECT_ID.firebaseapp.com",
@@ -120,53 +155,47 @@ const firebaseConfig = {
   appId: "SEU_APP_ID"
 };
 
-let db = null;
-let useFirebase = false;
+let db = null, useFirebase = false;
 
-// Tenta inicializar o Firebase
 try {
   if (firebaseConfig.apiKey !== "SUA_API_KEY") {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     useFirebase = true;
   }
-} catch (e) {
-  console.warn("Firebase não configurado ou com chaves inválidas. Usando modo local.");
-}
+} catch (e) {}
 
 const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado'],
-      co=['#e0a400','#1976d2','#f57c00','#7138c8','#159447'];
+      co=['#388bfd','#d29922','#a371f7','#da3633','#238636'];
 
 let cs = [];
 
-// Carrega inicialização do banco local se não houver Firebase ativado
 if (!useFirebase) {
   document.getElementById('netStatus').textContent = "MODO LOCAL";
-  document.getElementById('netStatus').style.background = "#f57c00";
+  document.getElementById('netStatus').style.background = "#d29922";
   let localData = localStorage.getItem('cargas_tb');
   if (localData) cs = JSON.parse(localData);
   setTimeout(() => { renderADM(); renderMotoristas(); }, 100);
 } else {
-  // Escuta Firebase
   db.ref('cargas').on('value', (snapshot) => {
     const data = snapshot.val();
     cs = data ? Object.values(data) : [];
     renderADM();
     renderMotoristas();
-  }, (err) => {
-    alert("Erro ao conectar no Firebase. Verifique as Regras de Segurança no console.");
   });
 }
+
+function updateRelogio(){
+  document.getElementById('relogio').textContent = new Date().toLocaleTimeString('pt-BR');
+}
+setInterval(updateRelogio, 1000);
+updateRelogio();
 
 function salvarDados(novaLista) {
   if (useFirebase && db) {
     let updates = {};
-    novaLista.forEach(item => {
-      updates['cargas/' + item.id] = item;
-    });
-    db.ref().update(updates).catch(err => {
-      alert("Erro ao salvar na nuvem: " + err.message);
-    });
+    novaLista.forEach(item => { updates['cargas/' + item.id] = item; });
+    db.ref().update(updates);
   } else {
     localStorage.setItem('cargas_tb', JSON.stringify(cs));
     renderADM();
@@ -174,102 +203,45 @@ function salvarDados(novaLista) {
   }
 }
 
-function getTodayString() {
-  return new Date().toISOString().slice(0, 10);
-}
+function getTodayString() { return new Date().toISOString().slice(0, 10); }
 
 function nova(){
-  let today = getTodayString();
-  let idVal = nid.value.trim();
-  let driverVal = nd.value.trim();
-  let plateVal = np.value.trim();
-  let destVal = nc.value.trim();
+  let idVal = nid.value.trim(), driverVal = nd.value.trim(), plateVal = np.value.trim(), destVal = nc.value.trim();
+  if(!idVal || !driverVal || !plateVal || !destVal) return alert('Preencha todos os campos!');
+  if(cs.some(x => String(x.id) === String(idVal))) return alert('Carga já cadastrada!');
 
-  if(!idVal || !driverVal || !plateVal || !destVal) {
-    return alert('Preencha todos os campos para cadastrar a carga.');
-  }
-
-  if(cs.some(x => String(x.id) === String(idVal))) {
-    return alert('A Carga #' + idVal + ' já foi cadastrada!');
-  }
-
-  let c = {
-    id: idVal,
-    d: driverVal,
-    p: plateVal,
-    c: destVal,
-    s: 'Separação',
-    dock: '',
-    loadStart: null,
-    loadEnd: null,
-    createdAt: today
-  };
-
+  let c = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: getTodayString() };
   cs.push(c);
   salvarDados([c]);
-
-  // Limpa formulário
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
-  alert('✅ Carga #' + idVal + ' cadastrada com sucesso!');
 }
 
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
       const data = new Uint8Array(evt.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-      if (json.length === 0) return alert('Planilha vazia.');
-
-      let novos = [];
-      let today = getTodayString();
+      const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+      let novos = [], today = getTodayString();
 
       json.forEach(row => {
         let getVal = (keys) => {
-          for (let key of Object.keys(row)) {
-            let cleanKey = key.trim().toLowerCase();
-            if (keys.some(k => cleanKey === k || cleanKey.includes(k))) return String(row[key]).trim();
+          for (let k of Object.keys(row)) {
+            if (keys.some(x => k.trim().toLowerCase().includes(x))) return String(row[k]).trim();
           }
           return '';
         };
-
-        let idVal = getVal(['carga', 'nº carga', 'num', 'numero', 'pedido']);
-        let motoristaVal = getVal(['motorista', 'nome', 'condutor']);
-        let placaVal = getVal(['placa', 'veiculo']);
-        let destinoVal = getVal(['destino', 'cidade', 'cliente']);
-
+        let idVal = getVal(['carga', 'num', 'pedido']);
         if (idVal && !cs.some(x => String(x.id) === String(idVal))) {
-          let item = {
-            id: idVal,
-            d: motoristaVal || '-',
-            p: placaVal || '-',
-            c: destinoVal || '-',
-            s: 'Separação',
-            dock: '',
-            loadStart: null,
-            loadEnd: null,
-            createdAt: today
-          };
-          cs.push(item);
-          novos.push(item);
+          let item = { id: idVal, d: getVal(['motorista', 'nome']) || '-', p: getVal(['placa']) || '-', c: getVal(['destino', 'cidade']) || '-', s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: today };
+          cs.push(item); novos.push(item);
         }
       });
-
-      if (novos.length > 0) {
-        salvarDados(novos);
-        alert(`✅ ${novos.length} cargas importadas com sucesso!`);
-      } else {
-        alert('Nenhuma carga nova encontrada na planilha.');
-      }
-    } catch (err) {
-      alert('Erro ao processar planilha: ' + err.message);
-    }
+      if (novos.length > 0) salvarDados(novos);
+    } catch (err) { alert('Erro ao ler arquivo'); }
     e.target.value = '';
   };
   reader.readAsArrayBuffer(file);
@@ -277,79 +249,64 @@ function importarArquivo(e) {
 
 function calcDuration(startStr, endStr) {
   if (!startStr) return '-';
-  let start = new Date(startStr);
-  let end = endStr ? new Date(endStr) : new Date();
-  let diffMs = end - start;
+  let diffMs = (endStr ? new Date(endStr) : new Date()) - new Date(startStr);
   if (diffMs < 0) return '-';
-  let mins = Math.floor(diffMs / 60000);
-  let hrs = Math.floor(mins / 60);
-  mins = mins % 60;
-  return hrs > 0 ? `${hrs}h ${mins}min` : `${mins}min`;
+  let mins = Math.floor(diffMs / 60000), hrs = Math.floor(mins / 60);
+  return hrs > 0 ? `${hrs}h ${mins%60}m` : `${mins}m`;
 }
 
-function formatTime(isoStr) {
-  if (!isoStr) return '-';
-  let d = new Date(isoStr);
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
+function formatTime(isoStr) { return isoStr ? new Date(isoStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'; }
 
 function renderADM(){
   let today = getTodayString();
   let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
+  if (!cargasHoje.length) { rows.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px;">Nenhuma carga cadastrada hoje.</td></tr>`; return; }
 
-  if (cargasHoje.length === 0) {
-    rows.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:20px;">Nenhuma carga cadastrada hoje.</td></tr>`;
-    return;
-  }
-
-  rows.innerHTML = cargasHoje.map(c => {
-    let statusIndex = st.indexOf(c.s);
-    let color = co[statusIndex] || '#333';
-    return `
-      <tr>
-        <td><strong>${c.id}</strong></td>
-        <td>${c.d}<br><small style="color:#666">${c.p}</small></td>
-        <td>${c.c}</td>
-        <td>${formatTime(c.loadStart)}</td>
-        <td>${formatTime(c.loadEnd)}</td>
-        <td><strong>${calcDuration(c.loadStart, c.loadEnd)}</strong></td>
-        <td><span class="step-badge" style="background:${color}">${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</span></td>
-        <td>
-          <button class="btn dark" onclick="status('${c.id}')">Avançar Status</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
+  rows.innerHTML = cargasHoje.map(c => `
+    <tr>
+      <td><strong>${c.id}</strong></td>
+      <td>${c.d}<br><small style="color:#8b949e">${c.p}</small></td>
+      <td>${c.c}</td>
+      <td>${formatTime(c.loadStart)}</td>
+      <td>${formatTime(c.loadEnd)}</td>
+      <td><strong>${calcDuration(c.loadStart, c.loadEnd)}</strong></td>
+      <td><span class="step-badge" style="background:${co[st.indexOf(c.s)]}">${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</span></td>
+      <td><button class="btn dark" onclick="status('${c.id}')">Avançar Status</button></td>
+    </tr>
+  `).join('');
 }
 
 function renderMotoristas(){
   let today = getTodayString();
+  let filterText = (searchFilter.value || '').trim().toLowerCase();
   let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
 
-  if (cargasHoje.length === 0) {
-    driverList.innerHTML = `<div style="text-align:center;color:#888;padding:20px;">Nenhuma carga cadastrada para hoje.</div>`;
+  if (filterText) {
+    cargasHoje = cargasHoje.filter(c => c.id.toLowerCase().includes(filterText) || c.p.toLowerCase().includes(filterText) || c.d.toLowerCase().includes(filterText));
+  }
+
+  if (!cargasHoje.length) {
+    driverBoard.innerHTML = `<div style="text-align:center;color:#8b949e;padding:30px;background:#161b22;border-radius:8px;">NENHUMA CARGA ENCONTRADA</div>`;
     return;
   }
 
-  driverList.innerHTML = cargasHoje.map(c => {
-    let statusIndex = st.indexOf(c.s);
-    let color = co[statusIndex] || '#333';
-    let isDoca = c.s === 'Doca';
-    let isDone = c.s === 'Finalizado';
+  driverBoard.innerHTML = cargasHoje.map(c => {
+    let cssClass = 'st-separacao';
+    if(c.s === 'Conferindo') cssClass = 'st-conferindo';
+    if(c.s === 'Pronto para carregar') cssClass = 'st-pronto';
+    if(c.s === 'Doca') cssClass = 'st-doca';
+    if(c.s === 'Finalizado') cssClass = 'st-finalizado';
 
     return `
-      <div class="driver-card">
-        <div class="driver-card-header">
-          <div class="driver-card-title">Carga #${c.id}</div>
-          <span class="step-badge" style="background:${color}">${c.s}</span>
-        </div>
-        <div class="driver-card-info">
-          <strong>Motorista:</strong> ${c.d} | <strong>Placa:</strong> ${c.p}<br>
-          <strong>Destino:</strong> ${c.c}<br>
-          ${c.loadStart ? `<strong>Carregamento:</strong> Início às ${formatTime(c.loadStart)}` : ''}
-        </div>
-        <div class="driver-card-status" style="background:${isDone ? '#eaf8ef' : (isDoca ? '#fff1e6' : '#f0f4f8')}; color:${isDone ? '#087136' : (isDoca ? '#954700' : '#333')}; border: 1px solid ${color}">
-          ${isDoca ? '🚨 DIRIJA-SE À DOCA ' + c.dock : (isDone ? '✅ CARREGAMENTO FINALIZADO' : '⏳ Status: ' + c.s.toUpperCase())}
+      <div class="board-row">
+        <div class="col-carga">#${c.id}</div>
+        <div class="col-driver">${c.d} <small>PLACA: ${c.p}</small></div>
+        <div class="col-dest">${c.c}</div>
+        <div class="col-time">${c.loadStart ? formatTime(c.loadStart) : '--:--'}</div>
+        <div>
+          <div class="status-box ${cssClass}">
+            ${c.s === 'Doca' ? '🚨 DOCA ' + c.dock : (c.s === 'Finalizado' ? '✅ FINALIZADO' : c.s.toUpperCase())}
+          </div>
         </div>
       </div>
     `;
@@ -359,60 +316,38 @@ function renderMotoristas(){
 function status(id){
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
-  let currentIndex = st.indexOf(c.s);
-  if (currentIndex >= st.length - 1) return alert('Esta carga já está Finalizada!');
+  let idx = st.indexOf(c.s);
+  if (idx >= st.length - 1) return alert('Carga já Finalizada!');
 
-  let nextStatus = st[currentIndex + 1];
-
-  if (nextStatus === 'Pronto para carregar' && !c.loadStart) {
-    c.loadStart = new Date().toISOString();
-  }
-
-  if (nextStatus === 'Doca') {
+  let next = st[idx + 1];
+  if (next === 'Pronto para carregar' && !c.loadStart) c.loadStart = new Date().toISOString();
+  if (next === 'Doca') {
     let dockNum = prompt('Digite o número da Doca:', '04');
     if (!dockNum) return;
     c.dock = dockNum;
   }
+  if (next === 'Finalizado') c.loadEnd = new Date().toISOString();
 
-  if (nextStatus === 'Finalizado') {
-    c.loadEnd = new Date().toISOString();
-  }
-
-  c.s = nextStatus;
+  c.s = next;
   salvarDados([c]);
 }
 
 function exportarCSV() {
-  if (cs.length === 0) return alert('Nenhuma carga registrada para exportar.');
-  let csvContent = "\uFEFFData;Carga;Motorista;Placa;Destino;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
+  if (!cs.length) return alert('Sem dados para exportar.');
+  let csv = "\uFEFFData;Carga;Motorista;Placa;Destino;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
   cs.forEach(c => {
-    let row = [
-      `"${c.createdAt || getTodayString()}"`, `"${c.id}"`, `"${c.d}"`, `"${c.p}"`, `"${c.c}"`,
-      `"${formatTime(c.loadStart)}"`, `"${formatTime(c.loadEnd)}"`, `"${calcDuration(c.loadStart, c.loadEnd)}"`,
-      `"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"`
-    ];
-    csvContent += row.join(";") + "\n";
+    csv += `"${c.createdAt || getTodayString()}";"${c.id}";"${c.d}";"${c.p}";"${c.c}";"${formatTime(c.loadStart)}";"${formatTime(c.loadEnd)}";"${calcDuration(c.loadStart, c.loadEnd)}";"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"\n`;
   });
-  let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  let url = URL.createObjectURL(blob);
   let a = document.createElement("a");
-  a.setAttribute("href", url);
-  a.setAttribute("download", `relatorio_transbordo_${new Date().toISOString().slice(0,10)}.csv`);
-  document.body.appendChild(a);
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `relatorio_transbordo_${getTodayString()}.csv`;
   a.click();
-  document.body.removeChild(a);
 }
 
 function toggleModo(){
-  if (adm.classList.contains('hidden')) {
-    adm.classList.remove('hidden');
-    mot.classList.add('hidden');
-    btnSwitch.textContent = '📱 Painel Motoristas';
-  } else {
-    adm.classList.add('hidden');
-    mot.classList.remove('hidden');
-    btnSwitch.textContent = '⚙️ Painel ADM';
-  }
+  adm.classList.toggle('hidden');
+  mot.classList.toggle('hidden');
+  btnSwitch.textContent = adm.classList.contains('hidden') ? '⚙️ Painel ADM' : '📱 Painel Motoristas';
 }
 </script>
 </body>
