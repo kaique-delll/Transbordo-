@@ -8,7 +8,7 @@
 *{box-sizing:border-box}
 body{margin:0;font:14px Arial, sans-serif;background:#0d1117;color:#c9d1d9}
 header{background:#161b22;color:white;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #30363d}
-.logo{font-size:26px;font-weight:900;letter-spacing:1px}
+.logo{font-size:24px;font-weight:900;letter-spacing:1px}
 .logo span{color:#ed1c24}
 .wrap{max-width:1300px;margin:auto;padding:15px}
 .card{background:#161b22;border-radius:10px;padding:18px;margin-bottom:15px;border:1px solid #30363d}
@@ -28,14 +28,14 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 
 /* ESTILO TERMINAL / AEROPORTO */
 .terminal-title{display:flex;justify-content:space-between;align-items:center;background:#090d12;padding:15px;border-radius:8px;border:1px solid #30363d;margin-bottom:15px}
-.terminal-title h2{margin:0;color:#f0f6fc;font-family:'Courier New', monospace;letter-spacing:2px;font-size:22px}
-.clock{font-family:'Courier New', monospace;font-size:22px;color:#58a6ff;font-weight:bold}
+.terminal-title h2{margin:0;color:#f0f6fc;font-family:'Courier New', monospace;letter-spacing:1px;font-size:18px}
+.clock{font-family:'Courier New', monospace;font-size:20px;color:#58a6ff;font-weight:bold}
 
-.search-bar{margin-bottom:15px;display:flex;gap:10px}
+.search-bar{margin-bottom:15px}
 .search-bar input{margin:0;font-size:16px;padding:12px}
 
 .flight-board{display:flex;flex-direction:column;gap:10px}
-.board-row{display:grid;grid-template-columns:100px 1fr 140px 180px 220px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
+.board-row{display:grid;grid-template-columns:100px 1fr 140px 140px 200px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
 .board-header{background:#21262d;font-weight:bold;color:#8b949e;text-transform:uppercase;font-size:11px;letter-spacing:1px;border:none}
 
 .col-carga{font-family:'Courier New', monospace;font-size:20px;font-weight:bold;color:#f0f6fc}
@@ -46,7 +46,6 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 
 .status-box{padding:10px 14px;border-radius:6px;font-weight:900;text-align:center;font-size:14px;letter-spacing:1px;text-transform:uppercase}
 
-/* CORES DOS STATUS */
 .st-separacao{background:#388bfd1a;color:#58a6ff;border:1px solid #388bfd66}
 .st-conferindo{background:#bb80091a;color:#d29922;border:1px solid #bb800966}
 .st-pronto{background:#a371f71a;color:#a371f7;border:1px solid #a371f766}
@@ -59,11 +58,17 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
   100%{opacity:1}
 }
 
-@media(max-width:850px){
-  .board-row{grid-template-columns:1fr 1fr;gap:10px}
+/* ADAPTAÇÃO PARA CELULAR */
+@media(max-width:768px){
+  header{padding:10px 15px}
+  .logo{font-size:18px}
+  .terminal-title{flex-direction:column;gap:5px;text-align:center}
   .board-header{display:none}
-  .col-time{grid-column:span 2}
-  .status-box{grid-column:span 2}
+  .board-row{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px}
+  .col-carga{font-size:18px;border-bottom:1px solid #30363d;padding-bottom:5px}
+  .col-driver{font-size:15px}
+  .col-time{font-size:14px}
+  .status-box{font-size:15px;padding:12px}
 }
 </style>
 
@@ -73,11 +78,12 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 </head>
 <body>
 <header>
-  <div class="logo">TRAN<span>S</span><small style="display:block;font-size:9px;letter-spacing:5px;color:#8b949e">TRANSBORDO <span class="status-online" id="netStatus">ONLINE</span></small></div>
-  <button id="btnSwitch" class="btn light" onclick="toggleModo()">📱 Painel Motoristas</button>
+  <div class="logo">TRAN<span>S</span><small style="display:inline-block;font-size:9px;letter-spacing:2px;color:#8b949e;margin-left:5px">TRANSBORDO <span class="status-online" id="netStatus">ONLINE</span></small></div>
+  <button id="btnSwitch" class="btn light" onclick="toggleModo()">⚙️ Painel ADM</button>
 </header>
 
-<div class="wrap" id="adm">
+<!-- PAINEL ADM -->
+<div class="wrap hidden" id="adm">
   <div class="card">
     <h2>Cadastrar Cargas</h2>
     <div class="grid">
@@ -122,14 +128,15 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
   </div>
 </div>
 
-<div class="wrap hidden" id="mot">
+<!-- PAINEL DO MOTORISTA -->
+<div class="wrap" id="mot">
   <div class="terminal-title">
     <h2>PAINEL DE EMBARQUE / CARREGAMENTO</h2>
     <div class="clock" id="relogio">00:00:00</div>
   </div>
 
   <div class="search-bar">
-    <input id="searchFilter" placeholder="🔍 Digite sua PLACA ou Nº DA CARGA para filtrar..." oninput="renderMotoristas()">
+    <input id="searchFilter" placeholder="🔍 Digite sua PLACA ou Nº DA CARGA para buscar..." oninput="renderMotoristas()">
   </div>
 
   <div class="flight-board">
@@ -169,6 +176,21 @@ const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado']
       co=['#388bfd','#d29922','#a371f7','#da3633','#238636'];
 
 let cs = [];
+
+// DETECTA SE É CELULAR OU TELAS MENORES
+window.addEventListener('DOMContentLoaded', () => {
+  const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    adm.classList.add('hidden');
+    mot.classList.remove('hidden');
+    btnSwitch.textContent = '⚙️ Painel ADM';
+  } else {
+    adm.classList.remove('hidden');
+    mot.classList.add('hidden');
+    btnSwitch.textContent = '📱 Painel Motoristas';
+  }
+});
 
 if (!useFirebase) {
   document.getElementById('netStatus').textContent = "MODO LOCAL";
@@ -299,10 +321,10 @@ function renderMotoristas(){
 
     return `
       <div class="board-row">
-        <div class="col-carga">#${c.id}</div>
+        <div class="col-carga">CARGA #${c.id}</div>
         <div class="col-driver">${c.d} <small>PLACA: ${c.p}</small></div>
-        <div class="col-dest">${c.c}</div>
-        <div class="col-time">${c.loadStart ? formatTime(c.loadStart) : '--:--'}</div>
+        <div class="col-dest"><strong>Destino:</strong> ${c.c}</div>
+        <div class="col-time">${c.loadStart ? 'Início: ' + formatTime(c.loadStart) : 'Aguardando início'}</div>
         <div>
           <div class="status-box ${cssClass}">
             ${c.s === 'Doca' ? '🚨 DOCA ' + c.dock : (c.s === 'Finalizado' ? '✅ FINALIZADO' : c.s.toUpperCase())}
