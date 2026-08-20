@@ -72,8 +72,13 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 }
 </style>
 
-<!-- Biblioteca para leitura de Excel / CSV -->
+<!-- Carregamento duplo de biblioteca para garantir suporte a Excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+if (typeof XLSX === 'undefined') {
+  document.write('<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+}
+</script>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -100,7 +105,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
     <div style="background:#21262d;border:2px dashed #30363d;padding:15px;border-radius:8px;margin-top:15px;text-align:center">
       <p style="margin:0 0 10px 0;color:#c9d1d9;"><strong>📁 Importar Planilha (Excel ou CSV)</strong></p>
       <label class="btn dark" style="cursor:pointer;display:inline-block">
-        📂 Selecionar Arquivo (.xlsx ou .csv)
+        📂 Selecionar Arquivo (.xlsx, .xls ou .csv)
         <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
       </label>
       <p style="font-size:11px;color:#8b949e;margin-top:8px">As colunas da planilha podem ser: <b>Carga</b>, <b>Motorista</b>, <b>Placa</b> e <b>Destino</b>.</p>
@@ -240,23 +245,34 @@ function nova(){
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
-/* IMPORTAÇÃO DE PLANILHA MELHORADA */
+/* LEITOR DE EXCEL UNIVERSAL COM TRATAMENTO DE BINÁRIOS E BASE64 */
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
 
   if (typeof XLSX === 'undefined') {
-    alert('Erro: A biblioteca de leitura de Excel não carregou. Verifique sua conexão com a internet.');
+    alert('Erro: A biblioteca do Excel ainda não carregou ou foi bloqueada pelo navegador. Conecte à internet ou recarregue a página.');
     return;
   }
 
   const reader = new FileReader();
+
   reader.onload = function(evt) {
     try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      let data = evt.target.result;
+      let workbook;
+
+      // Suporte para Binary String e ArrayBuffer
+      if (typeof data === 'string') {
+        workbook = XLSX.read(data, { type: 'binary' });
+      } else {
+        let bytes = new Uint8Array(data);
+        workbook = XLSX.read(bytes, { type: 'array' });
+      }
+
       const firstSheetName = workbook.SheetNames[0];
-      const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
+      const worksheet = workbook.Sheets[firstSheetName];
+      const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
       if (!json || json.length === 0) {
         alert('A planilha selecionada está vazia!');
@@ -265,19 +281,18 @@ function importarArquivo(e) {
 
       let novos = [];
       let duplicados = 0;
-      let semId = 0;
       let today = getTodayString();
 
       json.forEach(row => {
-        // Busca flexível de colunas por palavras-chave
         let getVal = (keys) => {
           for (let k of Object.keys(row)) {
-            let keyClean = k.trim().toLowerCase();
+            let keyClean = String(k).trim().toLowerCase();
             if (keys.some(x => keyClean.includes(x))) return String(row[k]).trim();
           }
           return '';
         };
 
+        // Reconhecimento de colunas
         let idVal = getVal(['carga', 'num', 'pedido', 'nota', 'romaneio', 'id', 'cod']);
         let driverVal = getVal(['motorista', 'nome', 'condutor', 'driver']) || '-';
         let plateVal = getVal(['placa', 'veiculo', 'cavalo', 'carreta']) || '-';
@@ -291,27 +306,31 @@ function importarArquivo(e) {
           } else {
             duplicados++;
           }
-        } else {
-          semId++;
         }
       });
 
       if (novos.length > 0) {
         salvarDados(novos);
-        alert(`✅ Sucesso! ${novos.length} carga(s) importada(s).\n${duplicados > 0 ? `⚠️ ${duplicados} cargas já existiam e foram ignoradas.` : ''}`);
+        alert(`✅ Sucesso! ${novos.length} carga(s) cadastrada(s) com sucesso.`);
       } else if (duplicados > 0) {
-        alert(`⚠️ Nenhuma carga nova foi cadastrada. Todas as ${duplicados} cargas da planilha já estão cadastradas.`);
+        alert(`⚠️ Nenhuma carga nova importada. As ${duplicados} cargas da planilha já estão cadastradas hoje.`);
       } else {
-        alert('⚠️ Nenhuma carga válida foi encontrada. Verifique se o cabeçalho da planilha contém uma coluna como "Carga", "Pedido" ou "Número".');
+        alert('⚠️ Não foi possível identificar os dados na planilha.\n\nCertifique-se de que a primeira linha contém os títulos das colunas (Exemplo: Carga, Motorista, Placa, Destino).');
       }
 
     } catch (err) {
       console.error(err);
-      alert('Erro ao processar o arquivo. Certifique-se de que é um arquivo Excel (.xlsx) ou CSV válido.');
+      alert('Erro ao ler a planilha Excel. Tente salvar a planilha no formato "Pasta de Trabalho do Excel (.xlsx)" ou "CSV".');
     }
     e.target.value = '';
   };
-  reader.readAsArrayBuffer(file);
+
+  // Método de leitura compatível com todos os navegadores
+  if (reader.readAsBinaryString) {
+    reader.readAsBinaryString(file);
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
 }
 
 function calcDuration(startStr, endStr) {
