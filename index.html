@@ -72,9 +72,12 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 }
 </style>
 
+<!-- Biblioteca para leitura de Excel / CSV -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <header>
@@ -96,10 +99,11 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 
     <div style="background:#21262d;border:2px dashed #30363d;padding:15px;border-radius:8px;margin-top:15px;text-align:center">
       <p style="margin:0 0 10px 0;color:#c9d1d9;"><strong>📁 Importar Planilha (Excel ou CSV)</strong></p>
-      <label class="btn dark" style="cursor:pointer">
+      <label class="btn dark" style="cursor:pointer;display:inline-block">
         📂 Selecionar Arquivo (.xlsx ou .csv)
         <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
       </label>
+      <p style="font-size:11px;color:#8b949e;margin-top:8px">As colunas da planilha podem ser: <b>Carga</b>, <b>Motorista</b>, <b>Placa</b> e <b>Destino</b>.</p>
     </div>
   </div>
 
@@ -177,10 +181,8 @@ const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado']
 
 let cs = [];
 
-// DETECTA SE É CELULAR OU TELAS MENORES
 window.addEventListener('DOMContentLoaded', () => {
   const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
   if (isMobile) {
     adm.classList.add('hidden');
     mot.classList.remove('hidden');
@@ -238,32 +240,75 @@ function nova(){
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
+/* IMPORTAÇÃO DE PLANILHA MELHORADA */
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
+
+  if (typeof XLSX === 'undefined') {
+    alert('Erro: A biblioteca de leitura de Excel não carregou. Verifique sua conexão com a internet.');
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
       const data = new Uint8Array(evt.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
-      const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-      let novos = [], today = getTodayString();
+      const firstSheetName = workbook.SheetNames[0];
+      const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
+
+      if (!json || json.length === 0) {
+        alert('A planilha selecionada está vazia!');
+        return;
+      }
+
+      let novos = [];
+      let duplicados = 0;
+      let semId = 0;
+      let today = getTodayString();
 
       json.forEach(row => {
+        // Busca flexível de colunas por palavras-chave
         let getVal = (keys) => {
           for (let k of Object.keys(row)) {
-            if (keys.some(x => k.trim().toLowerCase().includes(x))) return String(row[k]).trim();
+            let keyClean = k.trim().toLowerCase();
+            if (keys.some(x => keyClean.includes(x))) return String(row[k]).trim();
           }
           return '';
         };
-        let idVal = getVal(['carga', 'num', 'pedido']);
-        if (idVal && !cs.some(x => String(x.id) === String(idVal))) {
-          let item = { id: idVal, d: getVal(['motorista', 'nome']) || '-', p: getVal(['placa']) || '-', c: getVal(['destino', 'cidade']) || '-', s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: today };
-          cs.push(item); novos.push(item);
+
+        let idVal = getVal(['carga', 'num', 'pedido', 'nota', 'romaneio', 'id', 'cod']);
+        let driverVal = getVal(['motorista', 'nome', 'condutor', 'driver']) || '-';
+        let plateVal = getVal(['placa', 'veiculo', 'cavalo', 'carreta']) || '-';
+        let destVal = getVal(['destino', 'cidade', 'uf', 'cliente', 'local']) || '-';
+
+        if (idVal) {
+          if (!cs.some(x => String(x.id) === String(idVal))) {
+            let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: today };
+            cs.push(item);
+            novos.push(item);
+          } else {
+            duplicados++;
+          }
+        } else {
+          semId++;
         }
       });
-      if (novos.length > 0) salvarDados(novos);
-    } catch (err) { alert('Erro ao ler arquivo'); }
+
+      if (novos.length > 0) {
+        salvarDados(novos);
+        alert(`✅ Sucesso! ${novos.length} carga(s) importada(s).\n${duplicados > 0 ? `⚠️ ${duplicados} cargas já existiam e foram ignoradas.` : ''}`);
+      } else if (duplicados > 0) {
+        alert(`⚠️ Nenhuma carga nova foi cadastrada. Todas as ${duplicados} cargas da planilha já estão cadastradas.`);
+      } else {
+        alert('⚠️ Nenhuma carga válida foi encontrada. Verifique se o cabeçalho da planilha contém uma coluna como "Carga", "Pedido" ou "Número".');
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao processar o arquivo. Certifique-se de que é um arquivo Excel (.xlsx) ou CSV válido.');
+    }
     e.target.value = '';
   };
   reader.readAsArrayBuffer(file);
