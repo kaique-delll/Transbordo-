@@ -1,185 +1,419 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Transbordo</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-        }
-        body {
-            background-color: #f4f6f9;
-            padding: 20px;
-            color: #333;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #1a252f;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, select, button {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        button {
-            background-color: #28a745;
-            color: white;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-        .cards-container {
-            margin-top: 20px;
-        }
-        .card {
-            background: #f8f9fa;
-            border-left: 5px solid #007bff;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        }
-        .card h3 {
-            margin-bottom: 5px;
-        }
-        .card p {
-            margin: 3px 0;
-            color: #555;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-            color: #fff;
-            background-color: #17a2b8;
-            margin-top: 5px;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRANSBORDO - Painel Tempo Real</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:14px Arial, sans-serif;background:#0d1117;color:#c9d1d9}
+header{background:#161b22;color:white;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #30363d}
+.logo{font-size:24px;font-weight:900;letter-spacing:1px}
+.logo span{color:#ed1c24}
+.wrap{max-width:1300px;margin:auto;padding:15px}
+.card{background:#161b22;border-radius:10px;padding:18px;margin-bottom:15px;border:1px solid #30363d}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+input,select{width:100%;padding:10px;border:1px solid #30363d;background:#0d1117;color:white;border-radius:7px;margin:5px 0 10px}
+.btn{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}
+.red{background:#ed1c24;color:white}
+.green{background:#238636;color:white}
+.dark{background:#21262d;color:white;border:1px solid #30363d}
+.light{background:#30363d;color:white}
+.table-wrapper{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
+.step-badge{display:inline-block;padding:5px 10px;border-radius:6px;color:white;font-weight:bold;font-size:12px}
+.status-online{font-size:11px;background:#238636;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
+.status-offline{font-size:11px;background:#d29922;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
+.hidden{display:none !important}
 
-    <!-- SDKs do Firebase (Versão compatível com navegador) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+/* ESTILO TERMINAL */
+.terminal-title{display:flex;justify-content:space-between;align-items:center;background:#090d12;padding:15px;border-radius:8px;border:1px solid #30363d;margin-bottom:15px}
+.terminal-title h2{margin:0;color:#f0f6fc;font-family:'Courier New', monospace;letter-spacing:1px;font-size:18px}
+.clock{font-family:'Courier New', monospace;font-size:20px;color:#58a6ff;font-weight:bold}
+
+.search-bar{margin-bottom:15px}
+.search-bar input{margin:0;font-size:16px;padding:12px}
+
+.flight-board{display:flex;flex-direction:column;gap:10px}
+.board-row{display:grid;grid-template-columns:100px 1fr 140px 140px 200px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
+.board-header{background:#21262d;font-weight:bold;color:#8b949e;text-transform:uppercase;font-size:11px;letter-spacing:1px;border:none}
+
+.col-carga{font-family:'Courier New', monospace;font-size:20px;font-weight:bold;color:#f0f6fc}
+.col-driver{font-size:16px;color:#f0f6fc;font-weight:600}
+.col-driver small{display:block;color:#8b949e;font-size:13px;font-weight:normal}
+.col-dest{font-size:15px;color:#c9d1d9}
+.col-time{font-family:'Courier New', monospace;font-size:16px;color:#58a6ff;font-weight:bold}
+
+.status-box{padding:10px 14px;border-radius:6px;font-weight:900;text-align:center;font-size:14px;letter-spacing:1px;text-transform:uppercase}
+
+.st-separacao{background:#388bfd1a;color:#58a6ff;border:1px solid #388bfd66}
+.st-conferindo{background:#bb80091a;color:#d29922;border:1px solid #bb800966}
+.st-pronto{background:#a371f71a;color:#a371f7;border:1px solid #a371f766}
+.st-doca{background:#da3633;color:white;animation:blink 1.2s infinite;font-size:16px;box-shadow:0 0 10px #da3633}
+.st-finalizado{background:#238636;color:white}
+
+@keyframes blink {
+  0%{opacity:1}
+  50%{opacity:0.4}
+  100%{opacity:1}
+}
+
+@media(max-width:768px){
+  header{padding:10px 15px}
+  .logo{font-size:18px}
+  .terminal-title{flex-direction:column;gap:5px;text-align:center}
+  .board-header{display:none}
+  .board-row{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px}
+  .col-carga{font-size:18px;border-bottom:1px solid #30363d;padding-bottom:5px}
+  .col-driver{font-size:15px}
+  .col-time{font-size:14px}
+  .status-box{font-size:15px;padding:12px}
+}
+</style>
+
+<!-- Excel XLSX -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+if (typeof XLSX === 'undefined') {
+  document.write('<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+}
+</script>
+
+<!-- Firebase Realtime Database SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
+<header>
+  <div class="logo">TRAN<span>S</span><small style="display:inline-block;font-size:9px;letter-spacing:2px;color:#8b949e;margin-left:5px">TRANSBORDO <span class="status-offline" id="netStatus">OFFLINE / LOCAL</span></small></div>
+  <button id="btnSwitch" class="btn light" onclick="toggleModo()">⚙️ Painel ADM</button>
+</header>
 
-    <div class="container">
-        <h1>Sistema de Transbordo</h1>
-
-        <form id="transbordoForm">
-            <div class="form-group">
-                <label for="motorista">Motorista / Placa</label>
-                <input type="text" id="motorista" placeholder="Ex: João - ABC1D23" required>
-            </div>
-            <div class="form-group">
-                <label for="descricao">Descrição da Carga / Nota</label>
-                <input type="text" id="descricao" placeholder="Ex: Carga de peças / NF 1234" required>
-            </div>
-            <div class="form-group">
-                <label for="status">Status</label>
-                <select id="status">
-                    <option value="Aguardando Transbordo">Aguardando Transbordo</option>
-                    <option value="Em Andamento">Em Andamento</option>
-                    <option value="Concluído">Concluído</option>
-                </select>
-            </div>
-            <button type="submit">Cadastrar Carga</button>
-        </form>
-
-        <h2 style="margin-top: 30px;">Cargas Registradas</h2>
-        <div id="cargasList" class="cards-container">
-            <p>Carregando dados...</p>
-        </div>
+<!-- PAINEL ADM -->
+<div class="wrap hidden" id="adm">
+  <div class="card">
+    <h2>Cadastrar Cargas</h2>
+    <div class="grid">
+      <div>Número da Carga<input id="nid" placeholder="Ex: 45821"></div>
+      <div>Placa<input id="np" placeholder="Ex: ABC-1D23"></div>
+      <div>Motorista<input id="nd" placeholder="Ex: João Silva"></div>
+      <div>Destino<input id="nc" placeholder="Ex: Ribeirão Preto - SP"></div>
     </div>
+    <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
 
-    <script>
-        // Configuração do seu projeto Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyC_kXQ4LIxLS00BWTazQJWUpACFltFcbBo",
-            authDomain: "transbordo-1e959.firebaseapp.com",
-            databaseURL: "https://transbordo-1e959-default-rtdb.firebaseio.com",
-            projectId: "transbordo-1e959",
-            storageBucket: "transbordo-1e959.firebasestorage.app",
-            messagingSenderId: "1060269857499",
-            appId: "1:1060269857499:web:22151f5502ac009a150afe",
-            measurementId: "G-HL85TFW51M"
+    <div style="background:#21262d;border:2px dashed #30363d;padding:15px;border-radius:8px;margin-top:15px;text-align:center">
+      <p style="margin:0 0 10px 0;color:#c9d1d9;"><strong>📁 Importar Planilha (Excel ou CSV)</strong></p>
+      <label class="btn dark" style="cursor:pointer;display:inline-block">
+        📂 Selecionar Arquivo (.xlsx, .xls ou .csv)
+        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+      <h2 style="margin:0">Cargas Cadastradas</h2>
+      <button class="btn green" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Carga</th>
+            <th>Motorista / Placa</th>
+            <th>Destino</th>
+            <th>Início Carreg.</th>
+            <th>Fim Carreg.</th>
+            <th>Tempo Carreg.</th>
+            <th>Status Atual</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAINEL DO MOTORISTA -->
+<div class="wrap" id="mot">
+  <div class="terminal-title">
+    <h2>PAINEL DE EMBARQUE / CARREGAMENTO</h2>
+    <div class="clock" id="relogio">00:00:00</div>
+  </div>
+
+  <div class="search-bar">
+    <input id="searchFilter" placeholder="🔍 Digite sua PLACA ou Nº DA CARGA para buscar..." oninput="renderMotoristas()">
+  </div>
+
+  <div class="flight-board">
+    <div class="board-row board-header">
+      <div>CARGA</div>
+      <div>MOTORISTA / PLACA</div>
+      <div>DESTINO</div>
+      <div>CARREGAMENTO</div>
+      <div style="text-align:center">STATUS / DOCA</div>
+    </div>
+    <div id="driverBoard"></div>
+  </div>
+</div>
+
+<script>
+// CONFIGURAÇÃO DO SEU PROJETO FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyC_kXQ4LIxLS00BWTazQJWUpACFltFcbBo",
+  authDomain: "transbordo-1e959.firebaseapp.com",
+  databaseURL: "https://transbordo-1e959-default-rtdb.firebaseio.com",
+  projectId: "transbordo-1e959",
+  storageBucket: "transbordo-1e959.firebasestorage.app",
+  messagingSenderId: "1060269857499",
+  appId: "1:1060269857499:web:22151f5502ac009a150afe",
+  measurementId: "G-HL85TFW51M"
+};
+
+let db = null, useFirebase = false;
+
+try {
+  if (firebaseConfig.apiKey !== "SUA_API_KEY") {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    useFirebase = true;
+  }
+} catch (e) {
+  console.log("Firebase não configurado. Rodando em modo local.");
+}
+
+const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado'],
+      co=['#388bfd','#d29922','#a371f7','#da3633','#238636'];
+
+let cs = [];
+
+window.addEventListener('DOMContentLoaded', () => {
+  const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (isMobile) {
+    adm.classList.add('hidden');
+    mot.classList.remove('hidden');
+    btnSwitch.textContent = '⚙️ Painel ADM';
+  } else {
+    adm.classList.remove('hidden');
+    mot.classList.add('hidden');
+    btnSwitch.textContent = '📱 Painel Motoristas';
+  }
+});
+
+// ESCUTA EM TEMPO REAL (REALTIME LISTENER)
+if (useFirebase && db) {
+  const statusElem = document.getElementById('netStatus');
+  statusElem.textContent = "TEMPO REAL ATIVO ⚡";
+  statusElem.className = "status-online";
+
+  // Toda vez que QUALQUER usuário alterar algo, o Firebase atualiza a tela de TODOS instantaneamente
+  db.ref('cargas').on('value', (snapshot) => {
+    const data = snapshot.val();
+    cs = data ? Object.values(data) : [];
+    renderADM();
+    renderMotoristas();
+  });
+} else {
+  let localData = localStorage.getItem('cargas_tb');
+  if (localData) cs = JSON.parse(localData);
+  setTimeout(() => { renderADM(); renderMotoristas(); }, 100);
+}
+
+function updateRelogio(){
+  document.getElementById('relogio').textContent = new Date().toLocaleTimeString('pt-BR');
+}
+setInterval(updateRelogio, 1000);
+updateRelogio();
+
+function salvarDados(itensModificados) {
+  if (useFirebase && db) {
+    let updates = {};
+    itensModificados.forEach(item => { updates['cargas/' + item.id] = item; });
+    db.ref().update(updates);
+  } else {
+    localStorage.setItem('cargas_tb', JSON.stringify(cs));
+    renderADM();
+    renderMotoristas();
+  }
+}
+
+function getTodayString() { return new Date().toISOString().slice(0, 10); }
+
+function nova(){
+  let idVal = nid.value.trim(), driverVal = nd.value.trim(), plateVal = np.value.trim(), destVal = nc.value.trim();
+  if(!idVal || !driverVal || !plateVal || !destVal) return alert('Preencha todos os campos!');
+  if(cs.some(x => String(x.id) === String(idVal))) return alert('Carga já cadastrada!');
+
+  let c = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: getTodayString() };
+  cs.push(c);
+  salvarDados([c]);
+  nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
+}
+
+function importarArquivo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      let data = evt.target.result;
+      let workbook;
+      if (typeof data === 'string') {
+        workbook = XLSX.read(data, { type: 'binary' });
+      } else {
+        let bytes = new Uint8Array(data);
+        workbook = XLSX.read(bytes, { type: 'array' });
+      }
+
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      if (!json || json.length === 0) return alert('A planilha está vazia!');
+
+      let novos = [];
+      let today = getTodayString();
+
+      json.forEach(row => {
+        let getVal = (keys) => {
+          for (let k of Object.keys(row)) {
+            if (keys.some(x => String(k).trim().toLowerCase().includes(x))) return String(row[k]).trim();
+          }
+          return '';
         };
 
-        // Inicializar o Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const cargasRef = database.ref('cargas');
+        let idVal = getVal(['carga', 'num', 'pedido', 'nota', 'romaneio', 'id']);
+        let driverVal = getVal(['motorista', 'nome', 'condutor', 'driver']) || '-';
+        let plateVal = getVal(['placa', 'veiculo', 'cavalo', 'carreta']) || '-';
+        let destVal = getVal(['destino', 'cidade', 'uf', 'cliente']) || '-';
 
-        // Salvar dados no Firebase
-        document.getElementById('transbordoForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        if (idVal && !cs.some(x => String(x.id) === String(idVal))) {
+          let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: today };
+          cs.push(item);
+          novos.push(item);
+        }
+      });
 
-            const motorista = document.getElementById('motorista').value;
-            const descricao = document.getElementById('descricao').value;
-            const status = document.getElementById('status').value;
+      if (novos.length > 0) {
+        salvarDados(novos);
+        alert(`✅ ${novos.length} carga(s) importada(s) e sincronizada(s) em tempo real!`);
+      } else {
+        alert('⚠️ Nenhuma carga nova importada.');
+      }
+    } catch (err) {
+      alert('Erro ao ler planilha.');
+    }
+    e.target.value = '';
+  };
 
-            const novaCarga = {
-                motorista: motorista,
-                descricao: descricao,
-                status: status,
-                timestamp: Date.now()
-            };
+  if (reader.readAsBinaryString) reader.readAsBinaryString(file);
+  else reader.readAsArrayBuffer(file);
+}
 
-            cargasRef.push(novaCarga).then(() => {
-                document.getElementById('transbordoForm').reset();
-            }).catch((error) => {
-                alert("Erro ao salvar: " + error.message);
-            });
-        });
+function calcDuration(startStr, endStr) {
+  if (!startStr) return '-';
+  let diffMs = (endStr ? new Date(endStr) : new Date()) - new Date(startStr);
+  if (diffMs < 0) return '-';
+  let mins = Math.floor(diffMs / 60000), hrs = Math.floor(mins / 60);
+  return hrs > 0 ? `${hrs}h ${mins%60}m` : `${mins}m`;
+}
 
-        // Escutar atualizações em tempo real no Firebase
-        cargasRef.on('value', (snapshot) => {
-            const cargasList = document.getElementById('cargasList');
-            cargasList.innerHTML = '';
+function formatTime(isoStr) { return isoStr ? new Date(isoStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'; }
 
-            const data = snapshot.val();
-            if (data) {
-                Object.keys(data).forEach((key) => {
-                    const carga = data[key];
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <h3>${carga.motorista}</h3>
-                        <p><strong>Descrição:</strong> ${carga.descricao}</p>
-                        <span class="status-badge">${carga.status}</span>
-                    `;
-                    cargasList.appendChild(card);
-                });
-            } else {
-                cargasList.innerHTML = '<p>Nenhuma carga cadastrada no momento.</p>';
-            }
-        });
-    </script>
+function renderADM(){
+  let today = getTodayString();
+  let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
+  if (!cargasHoje.length) { rows.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px;">Nenhuma carga cadastrada hoje.</td></tr>`; return; }
+
+  rows.innerHTML = cargasHoje.map(c => `
+    <tr>
+      <td><strong>${c.id}</strong></td>
+      <td>${c.d}<br><small style="color:#8b949e">${c.p}</small></td>
+      <td>${c.c}</td>
+      <td>${formatTime(c.loadStart)}</td>
+      <td>${formatTime(c.loadEnd)}</td>
+      <td><strong>${calcDuration(c.loadStart, c.loadEnd)}</strong></td>
+      <td><span class="step-badge" style="background:${co[st.indexOf(c.s)]}">${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</span></td>
+      <td><button class="btn dark" onclick="status('${c.id}')">Avançar Status</button></td>
+    </tr>
+  `).join('');
+}
+
+function renderMotoristas(){
+  let today = getTodayString();
+  let filterText = (searchFilter.value || '').trim().toLowerCase();
+  let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
+
+  if (filterText) {
+    cargasHoje = cargasHoje.filter(c => c.id.toLowerCase().includes(filterText) || c.p.toLowerCase().includes(filterText) || c.d.toLowerCase().includes(filterText));
+  }
+
+  if (!cargasHoje.length) {
+    driverBoard.innerHTML = `<div style="text-align:center;color:#8b949e;padding:30px;background:#161b22;border-radius:8px;">NENHUMA CARGA ENCONTRADA</div>`;
+    return;
+  }
+
+  driverBoard.innerHTML = cargasHoje.map(c => {
+    let cssClass = 'st-separacao';
+    if(c.s === 'Conferindo') cssClass = 'st-conferindo';
+    if(c.s === 'Pronto para carregar') cssClass = 'st-pronto';
+    if(c.s === 'Doca') cssClass = 'st-doca';
+    if(c.s === 'Finalizado') cssClass = 'st-finalizado';
+
+    return `
+      <div class="board-row">
+        <div class="col-carga">CARGA #${c.id}</div>
+        <div class="col-driver">${c.d} <small>PLACA: ${c.p}</small></div>
+        <div class="col-dest"><strong>Destino:</strong> ${c.c}</div>
+        <div class="col-time">${c.loadStart ? 'Início: ' + formatTime(c.loadStart) : 'Aguardando início'}</div>
+        <div>
+          <div class="status-box ${cssClass}">
+            ${c.s === 'Doca' ? '🚨 DOCA ' + c.dock : (c.s === 'Finalizado' ? '✅ FINALIZADO' : c.s.toUpperCase())}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function status(id){
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
+  let idx = st.indexOf(c.s);
+  if (idx >= st.length - 1) return alert('Carga já Finalizada!');
+
+  let next = st[idx + 1];
+  if (next === 'Pronto para carregar' && !c.loadStart) c.loadStart = new Date().toISOString();
+  if (next === 'Doca') {
+    let dockNum = prompt('Digite o número da Doca:', '04');
+    if (!dockNum) return;
+    c.dock = dockNum;
+  }
+  if (next === 'Finalizado') c.loadEnd = new Date().toISOString();
+
+  c.s = next;
+  salvarDados([c]);
+}
+
+function exportarCSV() {
+  if (!cs.length) return alert('Sem dados para exportar.');
+  let csv = "\uFEFFData;Carga;Motorista;Placa;Destino;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
+  cs.forEach(c => {
+    csv += `"${c.createdAt || getTodayString()}";"${c.id}";"${c.d}";"${c.p}";"${c.c}";"${formatTime(c.loadStart)}";"${formatTime(c.loadEnd)}";"${calcDuration(c.loadStart, c.loadEnd)}";"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"\n`;
+  });
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `relatorio_transbordo_${getTodayString()}.csv`;
+  a.click();
+}
+
+function toggleModo(){
+  adm.classList.toggle('hidden');
+  mot.classList.toggle('hidden');
+  btnSwitch.textContent = adm.classList.contains('hidden') ? '⚙️ Painel ADM' : '📱 Painel Motoristas';
+}
+</script>
 </body>
 </html>
