@@ -168,8 +168,7 @@ const firebaseConfig = {
   projectId: "transbordo-1e959",
   storageBucket: "transbordo-1e959.firebasestorage.app",
   messagingSenderId: "1060269857499",
-  appId: "1:1060269857499:web:22151f5502ac009a150afe",
-  measurementId: "G-HL85TFW51M"
+  appId: "1:1060269857499:web:22151f5502ac009a150afe"
 };
 
 let db = null, useFirebase = false;
@@ -208,7 +207,6 @@ if (useFirebase && db) {
   statusElem.textContent = "TEMPO REAL ATIVO ⚡";
   statusElem.className = "status-online";
 
-  // Toda vez que QUALQUER usuário alterar algo, o Firebase atualiza a tela de TODOS instantaneamente
   db.ref('cargas').on('value', (snapshot) => {
     const data = snapshot.val();
     cs = data ? Object.values(data) : [];
@@ -252,6 +250,7 @@ function nova(){
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
+/* LEITOR DE PLANILHA ATUALIZADO E COMPATÍVEL COM O FORMATO DE ARARAQUARA */
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -269,40 +268,67 @@ function importarArquivo(e) {
       }
 
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      // Converte a planilha em matriz bruta (array de arrays) para ignorar cabeçalhos em posições fixas
+      const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-      if (!json || json.length === 0) return alert('A planilha está vazia!');
+      if (!rawMatrix || rawMatrix.length === 0) return alert('A planilha está vazia!');
 
+      let colIndexes = { id: -1, driver: -1, plate: -1, dest: -1 };
       let novos = [];
       let today = getTodayString();
 
-      json.forEach(row => {
-        let getVal = (keys) => {
-          for (let k of Object.keys(row)) {
-            if (keys.some(x => String(k).trim().toLowerCase().includes(x))) return String(row[k]).trim();
-          }
-          return '';
-        };
+      for (let r = 0; r < rawMatrix.length; r++) {
+        let row = rawMatrix[r];
+        if (!row || !row.length) continue;
 
-        let idVal = getVal(['carga', 'num', 'pedido', 'nota', 'romaneio', 'id']);
-        let driverVal = getVal(['motorista', 'nome', 'condutor', 'driver']) || '-';
-        let plateVal = getVal(['placa', 'veiculo', 'cavalo', 'carreta']) || '-';
-        let destVal = getVal(['destino', 'cidade', 'uf', 'cliente']) || '-';
-
-        if (idVal && !cs.some(x => String(x.id) === String(idVal))) {
-          let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: today };
-          cs.push(item);
-          novos.push(item);
+        // Procura a linha que contém os cabeçalhos das colunas
+        let rowStrArr = row.map(cell => String(cell).trim().toLowerCase());
+        
+        let foundHeader = rowStrArr.some(c => c.includes('romaneio') || c.includes('carga') || c.includes('id') || c.includes('veículo') || c.includes('veiculo'));
+        if (foundHeader && colIndexes.id === -1) {
+          rowStrArr.forEach((cell, idx) => {
+            if (cell.includes('romaneio') || cell.includes('carga erp') || cell.includes('pedido') || cell.includes('nota') || cell === 'id') {
+              if (colIndexes.id === -1) colIndexes.id = idx;
+            }
+            if (cell.includes('motorista') || cell.includes('nome') || cell.includes('condutor')) {
+              colIndexes.driver = idx;
+            }
+            if (cell.includes('veículo') || cell.includes('veiculo') || cell.includes('placa') || cell.includes('carreta')) {
+              colIndexes.plate = idx;
+            }
+            if (cell.includes('destino') || cell.includes('cidade') || cell.includes('uf')) {
+              colIndexes.dest = idx;
+            }
+          });
+          continue; // Pula a linha de cabeçalho
         }
-      });
+
+        // Se já encontrou os cabeçalhos, processa os dados da linha
+        if (colIndexes.id !== -1) {
+          let idVal = colIndexes.id !== -1 && row[colIndexes.id] ? String(row[colIndexes.id]).trim() : '';
+          let driverVal = colIndexes.driver !== -1 && row[colIndexes.driver] ? String(row[colIndexes.driver]).trim() : '-';
+          let plateVal = colIndexes.plate !== -1 && row[colIndexes.plate] ? String(row[colIndexes.plate]).trim() : '-';
+          let destVal = colIndexes.dest !== -1 && row[colIndexes.dest] ? String(row[colIndexes.dest]).trim() : '-';
+
+          // Garante que é uma linha válida com número de carga/romaneio
+          if (idVal && idVal !== '-' && idVal.length >= 3 && !isNaN(idVal.replace('.', '').replace(',', ''))) {
+            if (!cs.some(x => String(x.id) === String(idVal))) {
+              let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: today };
+              cs.push(item);
+              novos.push(item);
+            }
+          }
+        }
+      }
 
       if (novos.length > 0) {
         salvarDados(novos);
         alert(`✅ ${novos.length} carga(s) importada(s) e sincronizada(s) em tempo real!`);
       } else {
-        alert('⚠️ Nenhuma carga nova importada.');
+        alert('⚠️ Nenhuma carga nova encontrada na planilha.');
       }
     } catch (err) {
+      console.error(err);
       alert('Erro ao ler planilha.');
     }
     e.target.value = '';
