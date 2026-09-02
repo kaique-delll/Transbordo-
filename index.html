@@ -17,6 +17,7 @@ input,select{width:100%;padding:10px;border:1px solid #30363d;background:#0d1117
 .btn{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}
 .red{background:#ed1c24;color:white}
 .green{background:#238636;color:white}
+.blue{background:#1f6beb;color:white}
 .dark{background:#21262d;color:white;border:1px solid #30363d}
 .light{background:#30363d;color:white}
 .table-wrapper{overflow-x:auto}
@@ -32,26 +33,31 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 .terminal-title h2{margin:0;color:#f0f6fc;font-family:'Courier New', monospace;letter-spacing:1px;font-size:18px}
 .clock{font-family:'Courier New', monospace;font-size:20px;color:#58a6ff;font-weight:bold}
 
-.search-bar{margin-bottom:15px}
+.search-bar{margin-bottom:15px;display:flex;gap:10px}
 .search-bar input{margin:0;font-size:16px;padding:12px}
 
 .flight-board{display:flex;flex-direction:column;gap:10px}
-.board-row{display:grid;grid-template-columns:100px 1fr 140px 140px 200px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
+.board-row{display:grid;grid-template-columns:100px 1fr 140px 140px 180px 160px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
 .board-header{background:#21262d;font-weight:bold;color:#8b949e;text-transform:uppercase;font-size:11px;letter-spacing:1px;border:none}
 
 .col-carga{font-family:'Courier New', monospace;font-size:20px;font-weight:bold;color:#f0f6fc}
 .col-driver{font-size:16px;color:#f0f6fc;font-weight:600}
 .col-driver small{display:block;color:#8b949e;font-size:13px;font-weight:normal}
 .col-dest{font-size:15px;color:#c9d1d9}
-.col-time{font-family:'Courier New', monospace;font-size:16px;color:#58a6ff;font-weight:bold}
+.col-time{font-family:'Courier New', monospace;font-size:14px;color:#58a6ff;font-weight:bold}
 
-.status-box{padding:10px 14px;border-radius:6px;font-weight:900;text-align:center;font-size:14px;letter-spacing:1px;text-transform:uppercase}
+.status-box{padding:10px 14px;border-radius:6px;font-weight:900;text-align:center;font-size:13px;letter-spacing:1px;text-transform:uppercase}
 
 .st-separacao{background:#388bfd1a;color:#58a6ff;border:1px solid #388bfd66}
 .st-conferindo{background:#bb80091a;color:#d29922;border:1px solid #bb800966}
 .st-pronto{background:#a371f71a;color:#a371f7;border:1px solid #a371f766}
-.st-doca{background:#da3633;color:white;animation:blink 1.2s infinite;font-size:16px;box-shadow:0 0 10px #da3633}
+.st-doca{background:#da3633;color:white;animation:blink 1.2s infinite;font-size:15px;box-shadow:0 0 10px #da3633}
 .st-finalizado{background:#238636;color:white}
+
+.carreta-badge{display:inline-block;padding:2px 6px;border-radius:4px;background:#30363d;color:#f0f6fc;font-size:11px;margin-top:4px}
+
+.driver-actions{display:flex;flex-direction:column;gap:6px}
+.btn-action{padding:8px;font-size:12px;width:100%;border-radius:6px;font-weight:bold;cursor:pointer;border:0}
 
 @keyframes blink {
   0%{opacity:1}
@@ -59,7 +65,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
   100%{opacity:1}
 }
 
-@media(max-width:768px){
+@media(max-width:900px){
   header{padding:10px 15px}
   .logo{font-size:18px}
   .terminal-title{flex-direction:column;gap:5px;text-align:center}
@@ -69,6 +75,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
   .col-driver{font-size:15px}
   .col-time{font-size:14px}
   .status-box{font-size:15px;padding:12px}
+  .search-bar{flex-direction:column}
 }
 </style>
 
@@ -112,9 +119,13 @@ if (typeof XLSX === 'undefined') {
   </div>
 
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px">
       <h2 style="margin:0">Cargas Cadastradas</h2>
-      <button class="btn green" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
+      <div style="display:flex;gap:10px;align-items:center">
+        <label for="admDateFilter" style="font-weight:bold">Data:</label>
+        <input type="date" id="admDateFilter" onchange="renderADM()" style="margin:0;width:auto">
+        <button class="btn green" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
+      </div>
     </div>
     <div class="table-wrapper">
       <table>
@@ -122,6 +133,7 @@ if (typeof XLSX === 'undefined') {
           <tr>
             <th>Carga</th>
             <th>Motorista / Placa</th>
+            <th>Ordem / Aba</th>
             <th>Destino</th>
             <th>Início Carreg.</th>
             <th>Fim Carreg.</th>
@@ -144,6 +156,7 @@ if (typeof XLSX === 'undefined') {
   </div>
 
   <div class="search-bar">
+    <input type="date" id="driverDateFilter" onchange="renderMotoristas()" style="max-width:180px">
     <input id="searchFilter" placeholder="🔍 Digite sua PLACA ou Nº DA CARGA para buscar..." oninput="renderMotoristas()">
   </div>
 
@@ -154,13 +167,14 @@ if (typeof XLSX === 'undefined') {
       <div>DESTINO</div>
       <div>CARREGAMENTO</div>
       <div style="text-align:center">STATUS / DOCA</div>
+      <div style="text-align:center">AÇÕES MOTORISTA</div>
     </div>
     <div id="driverBoard"></div>
   </div>
 </div>
 
 <script>
-// CONFIGURAÇÃO DO SEU PROJETO FIREBASE
+// COLE SUAS CHAVES DO FIREBASE AQUI
 const firebaseConfig = {
   apiKey: "AIzaSyC_kXQ4LIxLS00BWTazQJWUpACFltFcbBo",
   authDomain: "transbordo-1e959.firebaseapp.com",
@@ -188,7 +202,13 @@ const st=['Separação','Conferindo','Pronto para carregar','Doca','Finalizado']
 
 let cs = [];
 
+function getTodayString() { return new Date().toISOString().slice(0, 10); }
+
 window.addEventListener('DOMContentLoaded', () => {
+  const today = getTodayString();
+  document.getElementById('admDateFilter').value = today;
+  document.getElementById('driverDateFilter').value = today;
+
   const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   if (isMobile) {
     adm.classList.add('hidden');
@@ -237,20 +257,18 @@ function salvarDados(itensModificados) {
   }
 }
 
-function getTodayString() { return new Date().toISOString().slice(0, 10); }
-
 function nova(){
   let idVal = nid.value.trim(), driverVal = nd.value.trim(), plateVal = np.value.trim(), destVal = nc.value.trim();
   if(!idVal || !driverVal || !plateVal || !destVal) return alert('Preencha todos os campos!');
   if(cs.some(x => String(x.id) === String(idVal))) return alert('Carga já cadastrada!');
 
-  let c = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: getTodayString() };
+  let selectedDate = document.getElementById('admDateFilter').value || getTodayString();
+  let c = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: selectedDate, carreta: '1ª Carreta' };
   cs.push(c);
   salvarDados([c]);
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
-/* LEITOR DE PLANILHA ATUALIZADO E COMPATÍVEL COM O FORMATO DE ARARAQUARA */
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -267,69 +285,89 @@ function importarArquivo(e) {
         workbook = XLSX.read(bytes, { type: 'array' });
       }
 
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      // Converte a planilha em matriz bruta (array de arrays) para ignorar cabeçalhos em posições fixas
-      const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-
-      if (!rawMatrix || rawMatrix.length === 0) return alert('A planilha está vazia!');
-
-      let colIndexes = { id: -1, driver: -1, plate: -1, dest: -1 };
       let novos = [];
       let today = getTodayString();
 
-      for (let r = 0; r < rawMatrix.length; r++) {
-        let row = rawMatrix[r];
-        if (!row || !row.length) continue;
+      workbook.SheetNames.forEach((sheetName) => {
+        const worksheet = workbook.Sheets[sheetName];
+        const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-        // Procura a linha que contém os cabeçalhos das colunas
-        let rowStrArr = row.map(cell => String(cell).trim().toLowerCase());
-        
-        let foundHeader = rowStrArr.some(c => c.includes('romaneio') || c.includes('carga') || c.includes('id') || c.includes('veículo') || c.includes('veiculo'));
-        if (foundHeader && colIndexes.id === -1) {
-          rowStrArr.forEach((cell, idx) => {
-            if (cell.includes('romaneio') || cell.includes('carga erp') || cell.includes('pedido') || cell.includes('nota') || cell === 'id') {
-              if (colIndexes.id === -1) colIndexes.id = idx;
-            }
-            if (cell.includes('motorista') || cell.includes('nome') || cell.includes('condutor')) {
-              colIndexes.driver = idx;
-            }
-            if (cell.includes('veículo') || cell.includes('veiculo') || cell.includes('placa') || cell.includes('carreta')) {
-              colIndexes.plate = idx;
-            }
-            if (cell.includes('destino') || cell.includes('cidade') || cell.includes('uf')) {
-              colIndexes.dest = idx;
-            }
-          });
-          continue; // Pula a linha de cabeçalho
-        }
+        if (!rawMatrix || rawMatrix.length === 0) return;
 
-        // Se já encontrou os cabeçalhos, processa os dados da linha
-        if (colIndexes.id !== -1) {
-          let idVal = colIndexes.id !== -1 && row[colIndexes.id] ? String(row[colIndexes.id]).trim() : '';
-          let driverVal = colIndexes.driver !== -1 && row[colIndexes.driver] ? String(row[colIndexes.driver]).trim() : '-';
-          let plateVal = colIndexes.plate !== -1 && row[colIndexes.plate] ? String(row[colIndexes.plate]).trim() : '-';
-          let destVal = colIndexes.dest !== -1 && row[colIndexes.dest] ? String(row[colIndexes.dest]).trim() : '-';
+        let colIndexes = { id: -1, driver: -1, plate: -1, dest: -1, date: -1 };
 
-          // Garante que é uma linha válida com número de carga/romaneio
-          if (idVal && idVal !== '-' && idVal.length >= 3 && !isNaN(idVal.replace('.', '').replace(',', ''))) {
-            if (!cs.some(x => String(x.id) === String(idVal))) {
-              let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', loadStart: null, loadEnd: null, createdAt: today };
-              cs.push(item);
-              novos.push(item);
+        for (let r = 0; r < rawMatrix.length; r++) {
+          let row = rawMatrix[r];
+          if (!row || !row.length) continue;
+
+          let rowStrArr = row.map(cell => String(cell).trim().toLowerCase());
+          let foundHeader = rowStrArr.some(c => c.includes('carga') || c.includes('veiculo') || c.includes('veículo') || c.includes('romaneio'));
+
+          if (foundHeader && colIndexes.id === -1) {
+            rowStrArr.forEach((cell, idx) => {
+              if (cell.includes('data') || cell.includes('dia')) colIndexes.date = idx;
+              if (cell.includes('carga') || cell.includes('romaneio') || cell.includes('erp') || cell === 'id') {
+                if (colIndexes.id === -1) colIndexes.id = idx;
+              }
+              if (cell.includes('motorista') || cell.includes('nome') || cell.includes('condutor')) colIndexes.driver = idx;
+              if (cell.includes('veiculo') || cell.includes('veículo') || cell.includes('placa') || cell.includes('carreta')) colIndexes.plate = idx;
+              if (cell.includes('destino') || cell.includes('cidade') || cell.includes('uf')) colIndexes.dest = idx;
+            });
+            continue;
+          }
+
+          if (colIndexes.id !== -1) {
+            let idVal = row[colIndexes.id] ? String(row[colIndexes.id]).trim() : '';
+            let driverVal = colIndexes.driver !== -1 && row[colIndexes.driver] ? String(row[colIndexes.driver]).trim() : '-';
+            let plateVal = colIndexes.plate !== -1 && row[colIndexes.plate] ? String(row[colIndexes.plate]).trim() : '-';
+            let destVal = colIndexes.dest !== -1 && row[colIndexes.dest] ? String(row[colIndexes.dest]).trim() : '-';
+            
+            let recordDate = today;
+            if (colIndexes.date !== -1 && row[colIndexes.date]) {
+              let rawDate = String(row[colIndexes.date]).trim();
+              if (rawDate.includes('/')) {
+                let parts = rawDate.split('/');
+                if (parts.length === 3) {
+                  recordDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+              } else if (rawDate.length === 10 && rawDate.includes('-')) {
+                recordDate = rawDate;
+              }
+            }
+
+            let carretaPos = sheetName.toLowerCase().includes('segunda') ? '2ª Carreta' : '1ª Carreta';
+
+            if (idVal && idVal !== '-' && idVal.length >= 3 && !isNaN(idVal.replace('.', '').replace(',', ''))) {
+              if (!cs.some(x => String(x.id) === String(idVal))) {
+                let item = { 
+                  id: idVal, 
+                  d: driverVal, 
+                  p: plateVal, 
+                  c: destVal, 
+                  s: 'Separação', 
+                  dock: '', 
+                  loadStart: null, 
+                  loadEnd: null, 
+                  createdAt: recordDate,
+                  carreta: carretaPos
+                };
+                cs.push(item);
+                novos.push(item);
+              }
             }
           }
         }
-      }
+      });
 
       if (novos.length > 0) {
         salvarDados(novos);
-        alert(`✅ ${novos.length} carga(s) importada(s) e sincronizada(s) em tempo real!`);
+        alert(`✅ ${novos.length} carga(s) importada(s) com sucesso das abas processadas!`);
       } else {
         alert('⚠️ Nenhuma carga nova encontrada na planilha.');
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao ler planilha.');
+      alert('Erro ao ler a planilha. Verifique a estrutura dos arquivos.');
     }
     e.target.value = '';
   };
@@ -348,15 +386,42 @@ function calcDuration(startStr, endStr) {
 
 function formatTime(isoStr) { return isoStr ? new Date(isoStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'; }
 
-function renderADM(){
-  let today = getTodayString();
-  let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
-  if (!cargasHoje.length) { rows.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px;">Nenhuma carga cadastrada hoje.</td></tr>`; return; }
+// FUNÇÕES DE AÇÃO DO MOTORISTA
+function motoristaIniciar(id) {
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
+  if (c.loadStart) return alert('Carregamento já foi iniciado!');
 
-  rows.innerHTML = cargasHoje.map(c => `
+  c.loadStart = new Date().toISOString();
+  if (c.s === 'Separação' || c.s === 'Conferindo') {
+    c.s = 'Pronto para carregar';
+  }
+  salvarDados([c]);
+  alert(`▶️ Carregamento da Carga #${id} iniciado às ${formatTime(c.loadStart)}`);
+}
+
+function motoristaFinalizar(id) {
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
+  if (!c.loadStart) return alert('Você precisa iniciar o carregamento antes de finalizar!');
+  if (c.loadEnd) return alert('Carregamento já foi finalizado!');
+
+  c.loadEnd = new Date().toISOString();
+  c.s = 'Finalizado';
+  salvarDados([c]);
+  alert(`✅ Carregamento da Carga #${id} finalizado às ${formatTime(c.loadEnd)}`);
+}
+
+function renderADM(){
+  let selectedDate = document.getElementById('admDateFilter').value || getTodayString();
+  let cargasData = cs.filter(c => (c.createdAt || getTodayString()) === selectedDate);
+  if (!cargasData.length) { rows.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#8b949e;padding:20px;">Nenhuma carga cadastrada nesta data.</td></tr>`; return; }
+
+  rows.innerHTML = cargasData.map(c => `
     <tr>
       <td><strong>${c.id}</strong></td>
       <td>${c.d}<br><small style="color:#8b949e">${c.p}</small></td>
+      <td><span class="carreta-badge">${c.carreta || '1ª Carreta'}</span></td>
       <td>${c.c}</td>
       <td>${formatTime(c.loadStart)}</td>
       <td>${formatTime(c.loadEnd)}</td>
@@ -368,20 +433,20 @@ function renderADM(){
 }
 
 function renderMotoristas(){
-  let today = getTodayString();
+  let selectedDate = document.getElementById('driverDateFilter').value || getTodayString();
   let filterText = (searchFilter.value || '').trim().toLowerCase();
-  let cargasHoje = cs.filter(c => (c.createdAt || today) === today);
+  let cargasData = cs.filter(c => (c.createdAt || getTodayString()) === selectedDate);
 
   if (filterText) {
-    cargasHoje = cargasHoje.filter(c => c.id.toLowerCase().includes(filterText) || c.p.toLowerCase().includes(filterText) || c.d.toLowerCase().includes(filterText));
+    cargasData = cargasData.filter(c => c.id.toLowerCase().includes(filterText) || c.p.toLowerCase().includes(filterText) || c.d.toLowerCase().includes(filterText));
   }
 
-  if (!cargasHoje.length) {
-    driverBoard.innerHTML = `<div style="text-align:center;color:#8b949e;padding:30px;background:#161b22;border-radius:8px;">NENHUMA CARGA ENCONTRADA</div>`;
+  if (!cargasData.length) {
+    driverBoard.innerHTML = `<div style="text-align:center;color:#8b949e;padding:30px;background:#161b22;border-radius:8px;">NENHUMA CARGA ENCONTRADA PARA ESTA DATA</div>`;
     return;
   }
 
-  driverBoard.innerHTML = cargasHoje.map(c => {
+  driverBoard.innerHTML = cargasData.map(c => {
     let cssClass = 'st-separacao';
     if(c.s === 'Conferindo') cssClass = 'st-conferindo';
     if(c.s === 'Pronto para carregar') cssClass = 'st-pronto';
@@ -390,14 +455,29 @@ function renderMotoristas(){
 
     return `
       <div class="board-row">
-        <div class="col-carga">CARGA #${c.id}</div>
+        <div class="col-carga">
+          CARGA #${c.id}
+          <div class="carreta-badge">${c.carreta || '1ª Carreta'}</div>
+        </div>
         <div class="col-driver">${c.d} <small>PLACA: ${c.p}</small></div>
         <div class="col-dest"><strong>Destino:</strong> ${c.c}</div>
-        <div class="col-time">${c.loadStart ? 'Início: ' + formatTime(c.loadStart) : 'Aguardando início'}</div>
+        <div class="col-time">
+          Início: ${formatTime(c.loadStart)}<br>
+          Fim: ${formatTime(c.loadEnd)}<br>
+          <small style="color:#8b949e">Tempo: ${calcDuration(c.loadStart, c.loadEnd)}</small>
+        </div>
         <div>
           <div class="status-box ${cssClass}">
             ${c.s === 'Doca' ? '🚨 DOCA ' + c.dock : (c.s === 'Finalizado' ? '✅ FINALIZADO' : c.s.toUpperCase())}
           </div>
+        </div>
+        <div class="driver-actions">
+          ${!c.loadStart ? 
+            `<button class="btn-action blue" onclick="motoristaIniciar('${c.id}')">▶️ Iniciar Carreg.</button>` : ''}
+          ${c.loadStart && !c.loadEnd ? 
+            `<button class="btn-action green" onclick="motoristaFinalizar('${c.id}')">✅ Finalizar Carreg.</button>` : ''}
+          ${c.loadEnd ? 
+            `<span style="color:#238636;font-size:11px;font-weight:bold;text-align:center">Concluído</span>` : ''}
         </div>
       </div>
     `;
@@ -425,13 +505,17 @@ function status(id){
 
 function exportarCSV() {
   if (!cs.length) return alert('Sem dados para exportar.');
-  let csv = "\uFEFFData;Carga;Motorista;Placa;Destino;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
-  cs.forEach(c => {
-    csv += `"${c.createdAt || getTodayString()}";"${c.id}";"${c.d}";"${c.p}";"${c.c}";"${formatTime(c.loadStart)}";"${formatTime(c.loadEnd)}";"${calcDuration(c.loadStart, c.loadEnd)}";"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"\n`;
+  let selectedDate = document.getElementById('admDateFilter').value || getTodayString();
+  let cargasData = cs.filter(c => (c.createdAt || getTodayString()) === selectedDate);
+  if (!cargasData.length) return alert('Sem dados na data selecionada para exportar.');
+
+  let csv = "\uFEFFData;Ordem/Carreta;Carga;Motorista;Placa;Destino;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
+  cargasData.forEach(c => {
+    csv += `"${c.createdAt || getTodayString()}";"${c.carreta || '1ª Carreta'}";"${c.id}";"${c.d}";"${c.p}";"${c.c}";"${formatTime(c.loadStart)}";"${formatTime(c.loadEnd)}";"${calcDuration(c.loadStart, c.loadEnd)}";"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"\n`;
   });
   let a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-  a.download = `relatorio_transbordo_${getTodayString()}.csv`;
+  a.download = `relatorio_transbordo_${selectedDate}.csv`;
   a.click();
 }
 
