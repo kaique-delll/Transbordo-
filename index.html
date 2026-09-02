@@ -56,7 +56,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 
 .carreta-badge{display:inline-block;padding:2px 6px;border-radius:4px;background:#30363d;color:#f0f6fc;font-size:11px;margin-top:4px}
 
-.driver-actions{display:flex;flex-direction:column;gap:6px}
+.driver-actions{display:flex;flex-direction:column;gap:6px;align-items:center}
 .btn-action{padding:8px;font-size:12px;width:100%;border-radius:6px;font-weight:bold;cursor:pointer;border:0}
 
 @keyframes blink {
@@ -221,7 +221,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ESCUTA EM TEMPO REAL (REALTIME LISTENER)
+// ESCUTA EM TEMPO REAL
 if (useFirebase && db) {
   const statusElem = document.getElementById('netStatus');
   statusElem.textContent = "TEMPO REAL ATIVO ⚡";
@@ -361,13 +361,13 @@ function importarArquivo(e) {
 
       if (novos.length > 0) {
         salvarDados(novos);
-        alert(`✅ ${novos.length} carga(s) importada(s) com sucesso das abas processadas!`);
+        alert(`✅ ${novos.length} carga(s) importada(s) com sucesso!`);
       } else {
-        alert('⚠️ Nenhuma carga nova encontrada na planilha.');
+        alert('⚠️ Nenhuma carga nova encontrada.');
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao ler a planilha. Verifique a estrutura dos arquivos.');
+      alert('Erro ao ler a planilha.');
     }
     e.target.value = '';
   };
@@ -386,18 +386,16 @@ function calcDuration(startStr, endStr) {
 
 function formatTime(isoStr) { return isoStr ? new Date(isoStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'; }
 
-// FUNÇÕES DE AÇÃO DO MOTORISTA
+// AÇÕES DO MOTORISTA (REGRAS DE DOCA)
 function motoristaIniciar(id) {
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
+  if (!c.dock) return alert('A doca ainda não foi definida pelo ADM!');
   if (c.loadStart) return alert('Carregamento já foi iniciado!');
 
   c.loadStart = new Date().toISOString();
-  if (c.s === 'Separação' || c.s === 'Conferindo') {
-    c.s = 'Pronto para carregar';
-  }
   salvarDados([c]);
-  alert(`▶️ Carregamento da Carga #${id} iniciado às ${formatTime(c.loadStart)}`);
+  alert(`▶️ Carregamento da Carga #${id} (Doca ${c.dock}) iniciado às ${formatTime(c.loadStart)}`);
 }
 
 function motoristaFinalizar(id) {
@@ -427,7 +425,9 @@ function renderADM(){
       <td>${formatTime(c.loadEnd)}</td>
       <td><strong>${calcDuration(c.loadStart, c.loadEnd)}</strong></td>
       <td><span class="step-badge" style="background:${co[st.indexOf(c.s)]}">${c.s}${c.dock ? ' — Doca ' + c.dock : ''}</span></td>
-      <td><button class="btn dark" onclick="status('${c.id}')">Avançar Status</button></td>
+      <td>
+        <button class="btn dark" onclick="status('${c.id}')">Avançar Status / Atribuir Doca</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -453,6 +453,18 @@ function renderMotoristas(){
     if(c.s === 'Doca') cssClass = 'st-doca';
     if(c.s === 'Finalizado') cssClass = 'st-finalizado';
 
+    // RENDERIZANDO AÇÕES BASEADO NA EXISTÊNCIA DA DOCA
+    let acoesHtml = '';
+    if (!c.dock) {
+      acoesHtml = `<span style="color:#8b949e;font-size:12px;font-weight:bold;">Aguardando Doca</span>`;
+    } else if (!c.loadStart) {
+      acoesHtml = `<button class="btn-action blue" onclick="motoristaIniciar('${c.id}')">▶️ Iniciar Carreg.</button>`;
+    } else if (c.loadStart && !c.loadEnd) {
+      acoesHtml = `<button class="btn-action green" onclick="motoristaFinalizar('${c.id}')">✅ Finalizar Carreg.</button>`;
+    } else {
+      acoesHtml = `<span style="color:#238636;font-size:12px;font-weight:bold;">✅ Concluído</span>`;
+    }
+
     return `
       <div class="board-row">
         <div class="col-carga">
@@ -468,16 +480,11 @@ function renderMotoristas(){
         </div>
         <div>
           <div class="status-box ${cssClass}">
-            ${c.s === 'Doca' ? '🚨 DOCA ' + c.dock : (c.s === 'Finalizado' ? '✅ FINALIZADO' : c.s.toUpperCase())}
+            ${c.dock ? '🚨 DOCA ' + c.dock : c.s.toUpperCase()}
           </div>
         </div>
         <div class="driver-actions">
-          ${!c.loadStart ? 
-            `<button class="btn-action blue" onclick="motoristaIniciar('${c.id}')">▶️ Iniciar Carreg.</button>` : ''}
-          ${c.loadStart && !c.loadEnd ? 
-            `<button class="btn-action green" onclick="motoristaFinalizar('${c.id}')">✅ Finalizar Carreg.</button>` : ''}
-          ${c.loadEnd ? 
-            `<span style="color:#238636;font-size:11px;font-weight:bold;text-align:center">Concluído</span>` : ''}
+          ${acoesHtml}
         </div>
       </div>
     `;
@@ -488,17 +495,21 @@ function status(id){
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
   let idx = st.indexOf(c.s);
+
+  // Permite digitar/alterar a doca a qualquer momento pelo ADM
+  let newDock = prompt('Digite o número da Doca para esta carga:', c.dock || '04');
+  if (newDock !== null) {
+    c.dock = newDock.trim();
+    if (c.dock && c.s !== 'Finalizado') {
+      c.s = 'Doca';
+    }
+    salvarDados([c]);
+    return;
+  }
+
   if (idx >= st.length - 1) return alert('Carga já Finalizada!');
 
   let next = st[idx + 1];
-  if (next === 'Pronto para carregar' && !c.loadStart) c.loadStart = new Date().toISOString();
-  if (next === 'Doca') {
-    let dockNum = prompt('Digite o número da Doca:', '04');
-    if (!dockNum) return;
-    c.dock = dockNum;
-  }
-  if (next === 'Finalizado') c.loadEnd = new Date().toISOString();
-
   c.s = next;
   salvarDados([c]);
 }
@@ -509,9 +520,9 @@ function exportarCSV() {
   let cargasData = cs.filter(c => (c.createdAt || getTodayString()) === selectedDate);
   if (!cargasData.length) return alert('Sem dados na data selecionada para exportar.');
 
-  let csv = "\uFEFFData;Ordem/Carreta;Carga;Motorista;Placa;Destino;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
+  let csv = "\uFEFFData;Ordem/Carreta;Carga;Motorista;Placa;Destino;Doca;Inicio Carreg;Fim Carreg;Tempo Carreg;Status\n";
   cargasData.forEach(c => {
-    csv += `"${c.createdAt || getTodayString()}";"${c.carreta || '1ª Carreta'}";"${c.id}";"${c.d}";"${c.p}";"${c.c}";"${formatTime(c.loadStart)}";"${formatTime(c.loadEnd)}";"${calcDuration(c.loadStart, c.loadEnd)}";"${c.s}${c.dock ? ' - Doca ' + c.dock : ''}"\n`;
+    csv += `"${c.createdAt || getTodayString()}";"${c.carreta || '1ª Carreta'}";"${c.id}";"${c.d}";"${c.p}";"${c.c}";"${c.dock || '-'}";"${formatTime(c.loadStart)}";"${formatTime(c.loadEnd)}";"${calcDuration(c.loadStart, c.loadEnd)}";"${c.s}"\n`;
   });
   let a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
