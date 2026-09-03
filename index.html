@@ -43,10 +43,10 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 .search-bar input{margin:0;font-size:16px;padding:12px}
 
 .flight-board{display:flex;flex-direction:column;gap:10px}
-.board-row{display:grid;grid-template-columns:100px 1fr 140px 140px 180px 160px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
+.board-row{display:grid;grid-template-columns:110px 1fr 140px 140px 180px 160px;align-items:center;background:#161b22;border:1px solid #30363d;padding:14px 18px;border-radius:8px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
 .board-header{background:#21262d;font-weight:bold;color:#8b949e;text-transform:uppercase;font-size:11px;letter-spacing:1px;border:none}
 
-.col-carga{font-family:'Courier New', monospace;font-size:20px;font-weight:bold;color:#f0f6fc}
+.col-carga{font-family:'Courier New', monospace;font-size:18px;font-weight:bold;color:#f0f6fc}
 .col-driver{font-size:16px;color:#f0f6fc;font-weight:600}
 .col-driver small{display:block;color:#8b949e;font-size:13px;font-weight:normal}
 .col-dest{font-size:15px;color:#c9d1d9}
@@ -85,8 +85,9 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 }
 </style>
 
-<!-- Excel XLSX SDK -->
+<!-- XLSX Excel Parser -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <!-- Firebase Realtime Database SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -105,14 +106,15 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
       <div>Número da Carga<input id="nid" placeholder="Ex: 45821"></div>
       <div>Placa<input id="np" placeholder="Ex: ABC-1D23"></div>
       <div>Motorista<input id="nd" placeholder="Ex: João Silva"></div>
-      <div>Destino<input id="nc" placeholder="Ex: Ribeirão Preto - SP"></div>
+      <div>Cidade / Destino<input id="nc" placeholder="Ex: Ribeirão Preto - SP"></div>
     </div>
     <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
 
-    <div style="background:#21262d;border:2px dashed #30363d;padding:15px;border-radius:8px;margin-top:15px;text-align:center">
-      <p style="margin:0 0 10px 0;color:#c9d1d9;"><strong>📁 Importar Planilha (Excel ou CSV)</strong></p>
+    <div style="background:#21262d;border:2px dashed #30363d;padding:18px;border-radius:8px;margin-top:15px;text-align:center">
+      <p style="margin:0 0 10px 0;color:#c9d1d9;font-size:15px;"><strong>📁 Importar Planilha de Cargas (.xlsx / .csv)</strong></p>
+      <p style="margin:0 0 15px 0;color:#8b949e;font-size:12px;">Suporta abas para <strong>1ª Carreta</strong> e <strong>2ª Carreta</strong> lendo: <i>Carga, Placa, Motorista, Cidade</i>.</p>
       <label class="btn dark" style="cursor:pointer;display:inline-block">
-        📂 Selecionar Arquivo (.xlsx, .xls ou .csv)
+        📂 Selecionar Planilha Excel
         <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
       </label>
     </div>
@@ -134,7 +136,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
             <th>Carga</th>
             <th>Motorista / Placa</th>
             <th>Ordem / Aba</th>
-            <th>Destino</th>
+            <th>Cidade</th>
             <th>Hora Chegada</th>
             <th>Início Carreg.</th>
             <th>Fim Carreg.</th>
@@ -156,7 +158,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
     <div class="clock" id="relogio">00:00:00</div>
   </div>
 
-  <!-- ABAS DE NAVEGAÇÃO -->
+  <!-- ABAS DE NAVEGAÇÃO MOTORISTA -->
   <div class="tabs">
     <div class="tab-btn active" id="tabChegada" onclick="mudarAba('chegada')">📍 1. CHEGADA NO PÁTIO</div>
     <div class="tab-btn" id="tabCarregamento" onclick="mudarAba('carregamento')">🚛 2. DOCA / EMBARQUE</div>
@@ -171,7 +173,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
     <div class="board-row board-header">
       <div>CARGA</div>
       <div>MOTORISTA / PLACA</div>
-      <div>DESTINO</div>
+      <div>CIDADE</div>
       <div>HORÁRIOS</div>
       <div style="text-align:center">STATUS / DOCA</div>
       <div style="text-align:center">AÇÕES MOTORISTA</div>
@@ -181,7 +183,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 </div>
 
 <script>
-// CONFIGURAÇÃO DO FIREBASE (SUBSTITUA SEU BACKUP AQUI)
+// CONFIGURAÇÃO DO FIREBASE (COM O SEU BACKUP)
 const firebaseConfig = {
   apiKey: "AIzaSyC_kXQ4LIxLS00BWTazQJWUpACFltFcbBo",
   authDomain: "transbordo-1e959.firebaseapp.com",
@@ -193,7 +195,7 @@ const firebaseConfig = {
 };
 
 let db = null, useFirebase = false;
-let abaAtual = 'chegada'; // 'chegada' ou 'carregamento'
+let abaAtual = 'chegada';
 
 try {
   if (firebaseConfig.apiKey !== "SUA_API_KEY") {
@@ -202,7 +204,7 @@ try {
     useFirebase = true;
   }
 } catch (e) {
-  console.log("Firebase não configurado. Rodando localmente.");
+  console.log("Firebase rodando localmente.");
 }
 
 const st=['Separação','Aguardando Doca','Doca','Finalizado'],
@@ -229,7 +231,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ESCUTA EM TEMPO REAL
+// TEMPO REAL
 if (useFirebase && db) {
   const statusElem = document.getElementById('netStatus');
   statusElem.textContent = "TEMPO REAL ATIVO ⚡";
@@ -284,6 +286,7 @@ function nova(){
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
+// IMPORTAÇÃO INTELIGENTE DE EXCEL
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -296,26 +299,28 @@ function importarArquivo(e) {
       let novos = [];
       let today = getTodayString();
 
+      // Percorre todas as abas (1ª Carreta, 2ª Carreta, etc.)
       workbook.SheetNames.forEach((sheetName) => {
         const worksheet = workbook.Sheets[sheetName];
         const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
         if (!rawMatrix || rawMatrix.length === 0) return;
 
-        let colIndexes = { id: -1, driver: -1, plate: -1, dest: -1, date: -1 };
+        let colIndexes = { id: -1, driver: -1, plate: -1, dest: -1 };
 
+        // Identificação flexível das colunas pelo cabeçalho
         for (let r = 0; r < rawMatrix.length; r++) {
           let row = rawMatrix[r];
           if (!row || !row.length) continue;
           let rowStrArr = row.map(cell => String(cell).trim().toLowerCase());
-          let foundHeader = rowStrArr.some(c => c.includes('carga') || c.includes('veiculo') || c.includes('veículo') || c.includes('romaneio'));
+
+          let foundHeader = rowStrArr.some(c => c.includes('carga') || c.includes('placa') || c.includes('motorista') || c.includes('cidade') || c.includes('destino'));
 
           if (foundHeader && colIndexes.id === -1) {
             rowStrArr.forEach((cell, idx) => {
-              if (cell.includes('data') || cell.includes('dia')) colIndexes.date = idx;
-              if (cell.includes('carga') || cell.includes('romaneio') || cell.includes('erp') || cell === 'id') { if (colIndexes.id === -1) colIndexes.id = idx; }
+              if (cell.includes('carga') || cell.includes('num') || cell.includes('nº') || cell === 'id') { if (colIndexes.id === -1) colIndexes.id = idx; }
               if (cell.includes('motorista') || cell.includes('nome') || cell.includes('condutor')) colIndexes.driver = idx;
-              if (cell.includes('veiculo') || cell.includes('veículo') || cell.includes('placa') || cell.includes('carreta')) colIndexes.plate = idx;
-              if (cell.includes('destino') || cell.includes('cidade') || cell.includes('uf')) colIndexes.dest = idx;
+              if (cell.includes('placa') || cell.includes('veiculo') || cell.includes('carreta')) colIndexes.plate = idx;
+              if (cell.includes('cidade') || cell.includes('destino') || cell.includes('uf')) colIndexes.dest = idx;
             });
             continue;
           }
@@ -325,23 +330,13 @@ function importarArquivo(e) {
             let driverVal = colIndexes.driver !== -1 && row[colIndexes.driver] ? String(row[colIndexes.driver]).trim() : '-';
             let plateVal = colIndexes.plate !== -1 && row[colIndexes.plate] ? String(row[colIndexes.plate]).trim() : '-';
             let destVal = colIndexes.dest !== -1 && row[colIndexes.dest] ? String(row[colIndexes.dest]).trim() : '-';
-            let recordDate = today;
 
-            if (colIndexes.date !== -1 && row[colIndexes.date]) {
-              let rawDate = String(row[colIndexes.date]).trim();
-              if (rawDate.includes('/')) {
-                let parts = rawDate.split('/');
-                if (parts.length === 3) recordDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-              } else if (rawDate.length === 10 && rawDate.includes('-')) {
-                recordDate = rawDate;
-              }
-            }
+            // Identifica qual é a carreta pelo nome da aba
+            let carretaPos = sheetName.toLowerCase().includes('segunda') || sheetName.toLowerCase().includes('2') ? '2ª Carreta' : '1ª Carreta';
 
-            let carretaPos = sheetName.toLowerCase().includes('segunda') ? '2ª Carreta' : '1ª Carreta';
-
-            if (idVal && idVal !== '-' && idVal.length >= 3 && !isNaN(idVal.replace('.', '').replace(',', ''))) {
+            if (idVal && idVal !== '-' && idVal.length >= 2) {
               if (!cs.some(x => String(x.id) === String(idVal))) {
-                let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', arrivalTime: null, loadStart: null, loadEnd: null, createdAt: recordDate, carreta: carretaPos };
+                let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', arrivalTime: null, loadStart: null, loadEnd: null, createdAt: today, carreta: carretaPos };
                 cs.push(item);
                 novos.push(item);
               }
@@ -350,9 +345,16 @@ function importarArquivo(e) {
         }
       });
 
-      if (novos.length > 0) { salvarDados(novos); alert(`✅ ${novos.length} carga(s) importada(s) com sucesso!`); }
-      else alert('⚠️ Nenhuma carga nova encontrada.');
-    } catch (err) { alert('Erro ao ler a planilha.'); }
+      if (novos.length > 0) {
+        salvarDados(novos);
+        alert(`✅ ${novos.length} carga(s) lida(s) e importada(s) com sucesso!`);
+      } else {
+        alert('⚠️ Nenhuma carga nova encontrada na planilha.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao ler a planilha Excel.');
+    }
     e.target.value = '';
   };
   if (reader.readAsBinaryString) reader.readAsBinaryString(file);
@@ -369,7 +371,7 @@ function calcDuration(startStr, endStr) {
 
 function formatTime(isoStr) { return isoStr ? new Date(isoStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'; }
 
-// AÇÕES DO MOTORISTA
+// AÇÕES MOTORISTA
 function motoristaChegou(id) {
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
@@ -378,13 +380,13 @@ function motoristaChegou(id) {
   c.arrivalTime = new Date().toISOString();
   if (c.s === 'Separação') c.s = 'Aguardando Doca';
   salvarDados([c]);
-  alert(`📍 Chegada registrada com sucesso às ${formatTime(c.arrivalTime)}! Aguarde a indicação da Doca.`);
+  alert(`📍 Chegada registrada com sucesso às ${formatTime(c.arrivalTime)}! Aguarde a liberação da Doca pelo ADM.`);
 }
 
 function motoristaIniciar(id) {
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
-  if (!c.dock) return alert('A doca ainda não foi definida pelo ADM!');
+  if (!c.dock) return alert('A doca ainda não foi informada pelo ADM!');
   if (c.loadStart) return alert('Carregamento já foi iniciado!');
 
   c.loadStart = new Date().toISOString();
@@ -456,7 +458,6 @@ function renderMotoristas(){
         acoesHtml = `<span style="color:#58a6ff;font-size:12px;font-weight:bold;">✅ Chegada às ${formatTime(c.arrivalTime)}</span>`;
       }
     } else {
-      // ABA EMBARQUE / CARREGAMENTO
       if (!c.arrivalTime) {
         acoesHtml = `<span style="color:#d29922;font-size:12px;font-weight:bold;">Aguardando Chegada no Pátio</span>`;
       } else if (!c.dock) {
@@ -477,7 +478,7 @@ function renderMotoristas(){
           <div class="carreta-badge">${c.carreta || '1ª Carreta'}</div>
         </div>
         <div class="col-driver">${c.d} <small>PLACA: ${c.p}</small></div>
-        <div class="col-dest"><strong>Destino:</strong> ${c.c}</div>
+        <div class="col-dest"><strong>Cidade:</strong> ${c.c}</div>
         <div class="col-time">
           Chegada: ${formatTime(c.arrivalTime)}<br>
           Início: ${formatTime(c.loadStart)} | Fim: ${formatTime(c.loadEnd)}
@@ -515,7 +516,7 @@ function exportarCSV() {
   let cargasData = cs.filter(c => (c.createdAt || getTodayString()) === selectedDate);
   if (!cargasData.length) return alert('Sem dados na data selecionada para exportar.');
 
-  let csv = "\uFEFFData;Ordem/Carreta;Carga;Motorista;Placa;Destino;Doca;Hora Chegada;Inicio Carreg;Fim Carreg;Tempo Total;Status\n";
+  let csv = "\uFEFFData;Ordem/Carreta;Carga;Motorista;Placa;Cidade;Doca;Hora Chegada;Inicio Carreg;Fim Carreg;Tempo Total;Status\n";
   cargasData.forEach(c => {
     csv += `"${c.createdAt || getTodayString()}";"${c.carreta || '1ª Carreta'}";"${c.id}";"${c.d}";"${c.p}";"${c.c}";"${c.dock || '-'}";"${formatTime(c.arrivalTime)}";"${formatTime(c.loadStart)}";"${formatTime(c.loadEnd)}";"${calcDuration(c.arrivalTime, c.loadEnd)}";"${c.s}"\n`;
   });
