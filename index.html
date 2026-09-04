@@ -142,7 +142,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
             <th>Fim Carreg.</th>
             <th>Tempo Total</th>
             <th>Status Atual</th>
-            <th>Ações ADM</th>
+            <th>Ação Rápida ADM</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -304,50 +304,36 @@ function motoristaFinalizar(id) {
   salvarDados([c]);
 }
 
-// ACOES ADM: ALTERAR STATUS / DOCA
-function statusADM(id) {
+// ACOES ADM: AVANÇAR STATUS COM APENAS UM CLIQUE
+function avancarStatus(id) {
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
 
-  let opcao = prompt(
-    "Escolha uma ação para a Carga #" + id + ":\n" +
-    "1 - Definir/Alterar Doca\n" +
-    "2 - Mudar Status para 'Separação'\n" +
-    "3 - Mudar Status para 'Conferência'\n" +
-    "4 - Mudar Status para 'Pronto para Carregar'\n" +
-    "5 - Mudar Status para 'Finalizado'",
-    "1"
-  );
-
-  if (!opcao) return;
-
-  if (opcao === "1") {
-    let newDock = prompt('Digite o número da Doca para esta carga:', c.dock || '04');
-    if (newDock !== null) {
-      c.dock = newDock.trim();
-      if (c.dock && c.s !== 'Finalizado') {
-        c.s = 'Doca';
-      }
-      salvarDados([c]);
-    }
-  } else if (opcao === "2") {
-    c.s = 'Separação';
-    salvarDados([c]);
-  } else if (opcao === "3") {
+  // Sequência: Separação -> Conferência -> Pronto p/ Carregar -> Doca -> Finalizado
+  if (c.s === 'Separação') {
     c.s = 'Conferência';
-    salvarDados([c]);
-  } else if (opcao === "4") {
+  } else if (c.s === 'Conferência' || c.s === 'Aguardando Conferência') {
     c.s = 'Pronto p/ Carregar';
-    salvarDados([c]);
-  } else if (opcao === "5") {
+  } else if (c.s === 'Pronto p/ Carregar') {
+    let newDock = prompt('Digite o número da Doca para a Carga #' + id + ':', c.dock || '01');
+    if (newDock !== null && newDock.trim() !== '') {
+      c.dock = newDock.trim();
+      c.s = 'Doca';
+    }
+  } else if (c.s === 'Doca' || c.dock) {
     c.s = 'Finalizado';
-    salvarDados([c]);
-  } else {
-    alert("Opção inválida!");
+  } else if (c.s === 'Finalizado') {
+    // Opção para reiniciar se clicar por engano em Finalizado
+    if (confirm("Deseja reiniciar esta carga para Separação?")) {
+      c.s = 'Separação';
+      c.dock = '';
+    }
   }
+
+  salvarDados([c]);
 }
 
-// LEITOR UNIVERSAL
+// LEITOR UNIVERSAL DE PLANILHAS
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -444,11 +430,24 @@ function renderADM(){
 
   rows.innerHTML = cargasData.map(c => {
     let statusBg = '#30363d';
-    if (c.s === 'Separação') statusBg = '#1f6beb';
-    if (c.s === 'Conferência') statusBg = '#d29922';
-    if (c.s === 'Pronto p/ Carregar') statusBg = '#a371f7';
-    if (c.dock) statusBg = '#da3633';
-    if (c.s === 'Finalizado') statusBg = '#238636';
+    let textoProximo = '▶️ Ir p/ Conferência';
+
+    if (c.s === 'Separação') {
+      statusBg = '#1f6beb';
+      textoProximo = '▶️ Ir p/ Conferência';
+    } else if (c.s === 'Conferência' || c.s === 'Aguardando Conferência') {
+      statusBg = '#d29922';
+      textoProximo = '▶️ Ir p/ Pronto p/ Carregar';
+    } else if (c.s === 'Pronto p/ Carregar') {
+      statusBg = '#a371f7';
+      textoProximo = '📍 Definir Doca';
+    } else if (c.dock || c.s === 'Doca') {
+      statusBg = '#da3633';
+      textoProximo = '✅ Finalizar';
+    } else if (c.s === 'Finalizado') {
+      statusBg = '#238636';
+      textoProximo = '🔄 Reiniciar';
+    }
 
     return `
     <tr>
@@ -462,7 +461,7 @@ function renderADM(){
       <td><strong>${calcDuration(c.arrivalTime, c.loadEnd)}</strong></td>
       <td><span class="step-badge" style="background:${statusBg}">${c.dock ? 'Doca ' + c.dock : c.s}</span></td>
       <td>
-        <button class="btn dark" onclick="statusADM('${c.id}')">⚙️ Alterar Status / Doca</button>
+        <button class="btn blue" onclick="avancarStatus('${c.id}')">${textoProximo}</button>
       </td>
     </tr>
   `}).join('');
