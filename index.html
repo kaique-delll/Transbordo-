@@ -125,10 +125,11 @@ th,td{padding:10px;border-top:1px solid #30363d;text-align:left;font-size:13px}
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px">
       <h2 style="margin:0">Cargas Cadastradas</h2>
-      <div style="display:flex;gap:10px;align-items:center">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <label for="admDateFilter" style="font-weight:bold">Data:</label>
         <input type="date" id="admDateFilter" onchange="renderADM()" style="margin:0;width:auto">
         <button class="btn green" style="padding:10px 15px;font-size:13px" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
+        <button class="btn red" style="padding:10px 15px;font-size:13px" onclick="resetarDia()">🗑️ Limpar Cargas do Dia</button>
       </div>
     </div>
     <div class="table-wrapper">
@@ -306,7 +307,7 @@ function motoristaFinalizar(id) {
   salvarDados([c]);
 }
 
-// ACOES ADM: AVANÇAR STATUS / EDITAR / EXCLUIR
+// ACOES ADM
 function avancarStatus(id) {
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
@@ -363,6 +364,30 @@ function excluirCarga(id) {
       renderADM();
       renderMotoristas();
     }
+  }
+}
+
+function resetarDia() {
+  let selectedDate = document.getElementById('admDateFilter').value || getTodayString();
+  let cargasDoDia = cs.filter(c => (c.createdAt || getTodayString()) === selectedDate);
+
+  if (!cargasDoDia.length) {
+    return alert('Não há cargas cadastradas na data ' + selectedDate + ' para apagar.');
+  }
+
+  if (confirm('⚠️ TEM CERTEZA? Isso irá apagar TODAS as ' + cargasDoDia.length + ' cargas do dia ' + selectedDate + '?')) {
+    cs = cs.filter(c => (c.createdAt || getTodayString()) !== selectedDate);
+
+    if (useFirebase && db) {
+      let updates = {};
+      cargasDoDia.forEach(c => { updates['cargas/' + c.id] = null; });
+      db.ref().update(updates);
+    } else {
+      localStorage.setItem('cargas_tb', JSON.stringify(cs));
+      renderADM();
+      renderMotoristas();
+    }
+    alert('✅ Todas as cargas do dia ' + selectedDate + ' foram apagadas!');
   }
 }
 
