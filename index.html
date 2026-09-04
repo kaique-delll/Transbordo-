@@ -14,7 +14,7 @@ header{background:#161b22;color:white;padding:15px 20px;display:flex;justify-con
 .card{background:#161b22;border-radius:10px;padding:18px;margin-bottom:15px;border:1px solid #30363d}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 input,select{width:100%;padding:10px;border:1px solid #30363d;background:#0d1117;color:white;border-radius:7px;margin:5px 0 10px}
-.btn{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}
+.btn{border:0;border-radius:7px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:12px}
 .red{background:#ed1c24;color:white}
 .green{background:#238636;color:white}
 .blue{background:#1f6beb;color:white}
@@ -23,11 +23,13 @@ input,select{width:100%;padding:10px;border:1px solid #30363d;background:#0d1117
 .light{background:#30363d;color:white}
 .table-wrapper{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
+th,td{padding:10px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 .step-badge{display:inline-block;padding:5px 10px;border-radius:6px;color:white;font-weight:bold;font-size:12px}
 .status-online{font-size:11px;background:#238636;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
 .status-offline{font-size:11px;background:#d29922;color:white;padding:3px 8px;border-radius:12px;margin-left:10px}
 .hidden{display:none !important}
+
+.action-btns{display:flex;gap:5px;flex-wrap:wrap}
 
 /* ABAS DE NAVEGAÇÃO MOTORISTA */
 .tabs{display:flex;gap:10px;margin-bottom:15px}
@@ -108,12 +110,12 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
       <div>Motorista<input id="nd" placeholder="Ex: João Silva"></div>
       <div>Cidade / Destino<input id="nc" placeholder="Ex: Ribeirão Preto - SP"></div>
     </div>
-    <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
+    <button class="btn red" style="padding:12px 20px;font-size:14px" onclick="nova()">Cadastrar Manualmente</button>
 
     <div style="background:#21262d;border:2px dashed #30363d;padding:18px;border-radius:8px;margin-top:15px;text-align:center">
       <p style="margin:0 0 10px 0;color:#c9d1d9;font-size:15px;"><strong>📁 Selecionar Qualquer Planilha Excel (.xlsx, .xls, .csv)</strong></p>
       <p style="margin:0 0 15px 0;color:#8b949e;font-size:12px;">O leitor analisa todas as abas e localiza Carga, Placa, Motorista e Cidade automaticamente.</p>
-      <label class="btn dark" style="cursor:pointer;display:inline-block">
+      <label class="btn dark" style="cursor:pointer;display:inline-block;padding:10px 20px">
         📂 Abrir Planilha
         <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
       </label>
@@ -126,7 +128,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
       <div style="display:flex;gap:10px;align-items:center">
         <label for="admDateFilter" style="font-weight:bold">Data:</label>
         <input type="date" id="admDateFilter" onchange="renderADM()" style="margin:0;width:auto">
-        <button class="btn green" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
+        <button class="btn green" style="padding:10px 15px;font-size:13px" onclick="exportarCSV()">📥 Baixar Relatório (CSV)</button>
       </div>
     </div>
     <div class="table-wrapper">
@@ -142,7 +144,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
             <th>Fim Carreg.</th>
             <th>Tempo Total</th>
             <th>Status Atual</th>
-            <th>Ação Rápida ADM</th>
+            <th style="min-width:220px">Ações ADM</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -304,12 +306,11 @@ function motoristaFinalizar(id) {
   salvarDados([c]);
 }
 
-// ACOES ADM: AVANÇAR STATUS COM APENAS UM CLIQUE
+// ACOES ADM: AVANÇAR STATUS / EDITAR / EXCLUIR
 function avancarStatus(id) {
   let c = cs.find(x => String(x.id) === String(id));
   if (!c) return;
 
-  // Sequência: Separação -> Conferência -> Pronto p/ Carregar -> Doca -> Finalizado
   if (c.s === 'Separação') {
     c.s = 'Conferência';
   } else if (c.s === 'Conferência' || c.s === 'Aguardando Conferência') {
@@ -323,7 +324,6 @@ function avancarStatus(id) {
   } else if (c.s === 'Doca' || c.dock) {
     c.s = 'Finalizado';
   } else if (c.s === 'Finalizado') {
-    // Opção para reiniciar se clicar por engano em Finalizado
     if (confirm("Deseja reiniciar esta carga para Separação?")) {
       c.s = 'Separação';
       c.dock = '';
@@ -331,6 +331,39 @@ function avancarStatus(id) {
   }
 
   salvarDados([c]);
+}
+
+function editarCarga(id) {
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
+
+  let newDriver = prompt('Editar Motorista:', c.d);
+  if (newDriver === null) return;
+
+  let newPlate = prompt('Editar Placa:', c.p);
+  if (newPlate === null) return;
+
+  let newCity = prompt('Editar Cidade / Destino:', c.c);
+  if (newCity === null) return;
+
+  c.d = newDriver.trim() || c.d;
+  c.p = newPlate.trim().toUpperCase() || c.p;
+  c.c = newCity.trim() || c.c;
+
+  salvarDados([c]);
+}
+
+function excluirCarga(id) {
+  if (confirm('Tem certeza que deseja apagar a Carga #' + id + '?')) {
+    cs = cs.filter(x => String(x.id) !== String(id));
+    if (useFirebase && db) {
+      db.ref('cargas/' + id).remove();
+    } else {
+      localStorage.setItem('cargas_tb', JSON.stringify(cs));
+      renderADM();
+      renderMotoristas();
+    }
+  }
 }
 
 // LEITOR UNIVERSAL DE PLANILHAS
@@ -430,17 +463,17 @@ function renderADM(){
 
   rows.innerHTML = cargasData.map(c => {
     let statusBg = '#30363d';
-    let textoProximo = '▶️ Ir p/ Conferência';
+    let textoProximo = '▶️ Avançar';
 
     if (c.s === 'Separação') {
       statusBg = '#1f6beb';
-      textoProximo = '▶️ Ir p/ Conferência';
+      textoProximo = '▶️ Conferência';
     } else if (c.s === 'Conferência' || c.s === 'Aguardando Conferência') {
       statusBg = '#d29922';
-      textoProximo = '▶️ Ir p/ Pronto p/ Carregar';
+      textoProximo = '▶️ Pronto';
     } else if (c.s === 'Pronto p/ Carregar') {
       statusBg = '#a371f7';
-      textoProximo = '📍 Definir Doca';
+      textoProximo = '📍 Doca';
     } else if (c.dock || c.s === 'Doca') {
       statusBg = '#da3633';
       textoProximo = '✅ Finalizar';
@@ -461,7 +494,11 @@ function renderADM(){
       <td><strong>${calcDuration(c.arrivalTime, c.loadEnd)}</strong></td>
       <td><span class="step-badge" style="background:${statusBg}">${c.dock ? 'Doca ' + c.dock : c.s}</span></td>
       <td>
-        <button class="btn blue" onclick="avancarStatus('${c.id}')">${textoProximo}</button>
+        <div class="action-btns">
+          <button class="btn blue" onclick="avancarStatus('${c.id}')">${textoProximo}</button>
+          <button class="btn dark" title="Editar dados" onclick="editarCarga('${c.id}')">✏️</button>
+          <button class="btn red" title="Excluir carga" onclick="excluirCarga('${c.id}')">🗑️</button>
+        </div>
       </td>
     </tr>
   `}).join('');
