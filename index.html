@@ -85,10 +85,10 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 }
 </style>
 
-<!-- Biblioteca para Leitura do Excel -->
+<!-- Biblioteca Excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-<!-- Firebase Realtime Database SDK -->
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
@@ -111,10 +111,10 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
     <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
 
     <div style="background:#21262d;border:2px dashed #30363d;padding:18px;border-radius:8px;margin-top:15px;text-align:center">
-      <p style="margin:0 0 10px 0;color:#c9d1d9;font-size:15px;"><strong>📁 Selecionar Planilha Excel (.xlsx, .xls ou .csv)</strong></p>
-      <p style="margin:0 0 15px 0;color:#8b949e;font-size:12px;">O sistema vai ler automaticamente as colunas de <strong>Carga, Placa, Motorista e Cidade</strong> de todas as abas.</p>
+      <p style="margin:0 0 10px 0;color:#c9d1d9;font-size:15px;"><strong>📁 Selecionar Qualquer Planilha Excel (.xlsx, .xls, .csv)</strong></p>
+      <p style="margin:0 0 15px 0;color:#8b949e;font-size:12px;">O leitor analisa todas as abas e localiza Carga, Placa, Motorista e Cidade automaticamente.</p>
       <label class="btn dark" style="cursor:pointer;display:inline-block">
-        📂 Abrir Planilha Excel
+        📂 Abrir Planilha
         <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
       </label>
     </div>
@@ -158,7 +158,6 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
     <div class="clock" id="relogio">00:00:00</div>
   </div>
 
-  <!-- ABAS DE NAVEGAÇÃO MOTORISTA -->
   <div class="tabs">
     <div class="tab-btn active" id="tabChegada" onclick="mudarAba('chegada')">📍 1. CHEGADA NO PÁTIO</div>
     <div class="tab-btn" id="tabCarregamento" onclick="mudarAba('carregamento')">🚛 2. DOCA / EMBARQUE</div>
@@ -183,7 +182,6 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 </div>
 
 <script>
-// CONFIGURAÇÃO DO FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyC_kXQ4LIxLS00BWTazQJWUpACFltFcbBo",
   authDomain: "transbordo-1e959.firebaseapp.com",
@@ -207,7 +205,6 @@ try {
   console.log("Firebase rodando localmente.");
 }
 
-const st=['Separação','Aguardando Doca','Doca','Finalizado'];
 let cs = [];
 
 function getTodayString() { return new Date().toISOString().slice(0, 10); }
@@ -229,7 +226,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// BANCO DE DADOS EM TEMPO REAL
 if (useFirebase && db) {
   const statusElem = document.getElementById('netStatus');
   statusElem.textContent = "TEMPO REAL ATIVO ⚡";
@@ -284,9 +280,7 @@ function nova(){
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
-// -------------------------------------------------------------
-// LEITOR DE TABELA E PLANILHA EXCEL (NOVA LÓGICA ULTRA-FLEXÍVEL)
-// -------------------------------------------------------------
+// LEITOR UNIVERSAL POR PADRÕES DE DADOS
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -299,89 +293,73 @@ function importarArquivo(e) {
       let novos = [];
       let today = getTodayString();
 
-      // Percorre todas as abas da planilha
       workbook.SheetNames.forEach((sheetName) => {
         const worksheet = workbook.Sheets[sheetName];
         const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
         if (!rawRows || rawRows.length === 0) return;
 
-        let idxCarga = -1, idxPlaca = -1, idxMotorista = -1, idxCidade = -1;
+        let carretaNome = (sheetName.toLowerCase().includes('2') || sheetName.toLowerCase().includes('segunda')) ? '2ª Carreta' : '1ª Carreta';
 
-        // 1. Procura a linha de cabeçalho
         for (let r = 0; r < rawRows.length; r++) {
           let row = rawRows[r];
-          if (!row || !row.length) continue;
+          if (!row || row.length === 0) continue;
 
-          row.forEach((cell, idx) => {
-            let str = String(cell).toLowerCase().trim();
-            if (str.includes('carga') || str.includes('num') || str.includes('nº') || str === 'id' || str.includes('ped')) {
-              if (idxCarga === -1) idxCarga = idx;
+          let idVal = "", driverVal = "", plateVal = "", destVal = "";
+
+          row.forEach((cell) => {
+            let val = String(cell).trim();
+            if (!val) return;
+
+            // Detecta Placa
+            if (/^[A-Z]{3}-?[0-9][A-Z0-9][0-9]{2}$/i.test(val)) {
+              plateVal = val.toUpperCase();
             }
-            if (str.includes('placa') || str.includes('veic') || str.includes('carreta')) {
-              if (idxPlaca === -1) idxPlaca = idx;
+            // Detecta Carga (número de 3 a 8 dígitos)
+            else if (/^\d{3,8}$/.test(val) && !idVal) {
+              idVal = val;
             }
-            if (str.includes('motorista') || str.includes('nome') || str.includes('condutor') || str.includes('driver')) {
-              if (idxMotorista === -1) idxMotorista = idx;
+            // Detecta Cidade (contém hífen/traço e sigla de UF ou separador)
+            else if ((val.includes('-') || val.includes('/')) && val.length > 3 && !destVal && !val.includes('http')) {
+              destVal = val;
             }
-            if (str.includes('cidade') || str.includes('destino') || str.includes('uf') || str.includes('local')) {
-              if (idxCidade === -1) idxCidade = idx;
+            // Detecta Nome do Motorista
+            else if (val.length > 2 && isNaN(val) && !val.toLowerCase().includes('carga') && !val.toLowerCase().includes('placa') && !val.toLowerCase().includes('motorista') && !val.toLowerCase().includes('cidade')) {
+              if (!driverVal) driverVal = val;
             }
           });
 
-          // Se achou pelo menos a coluna de CARGA, considera que achou o cabeçalho
-          if (idxCarga !== -1) {
-            // Se as outras colunas não estiverem explícitas, define posições padrão
-            if (idxPlaca === -1) idxPlaca = idxCarga + 1;
-            if (idxMotorista === -1) idxMotorista = idxCarga + 2;
-            if (idxCidade === -1) idxCidade = idxCarga + 3;
-
-            // Extrai as linhas abaixo do cabeçalho
-            for (let dataRowIdx = r + 1; dataRowIdx < rawRows.length; dataRowIdx++) {
-              let dRow = rawRows[dataRowIdx];
-              if (!dRow || dRow.length === 0) continue;
-
-              let valCarga = dRow[idxCarga] ? String(dRow[idxCarga]).trim() : '';
-              let valPlaca = dRow[idxPlaca] ? String(dRow[idxPlaca]).trim() : '-';
-              let valMotorista = dRow[idxMotorista] ? String(dRow[idxMotorista]).trim() : '-';
-              let valCidade = dRow[idxCidade] ? String(dRow[idxCidade]).trim() : '-';
-
-              let nomeAbaLower = sheetName.toLowerCase();
-              let carretaNome = (nomeAbaLower.includes('2') || nomeAbaLower.includes('segunda')) ? '2ª Carreta' : '1ª Carreta';
-
-              if (valCarga && valCarga !== '-' && valCarga.length >= 2) {
-                if (!cs.some(x => String(x.id) === String(valCarga))) {
-                  let item = {
-                    id: valCarga,
-                    d: valMotorista,
-                    p: valPlaca,
-                    c: valCidade,
-                    s: 'Separação',
-                    dock: '',
-                    arrivalTime: null,
-                    loadStart: null,
-                    loadEnd: null,
-                    createdAt: today,
-                    carreta: carretaNome
-                  };
-                  cs.push(item);
-                  novos.push(item);
-                }
-              }
+          // Se encontrou número da carga válido
+          if (idVal) {
+            if (!cs.some(x => String(x.id) === String(idVal))) {
+              let item = {
+                id: idVal,
+                d: driverVal || 'Motorista Não Informado',
+                p: plateVal || 'Sem Placa',
+                c: destVal || 'Não Informado',
+                s: 'Separação',
+                dock: '',
+                arrivalTime: null,
+                loadStart: null,
+                loadEnd: null,
+                createdAt: today,
+                carreta: carretaNome
+              };
+              cs.push(item);
+              novos.push(item);
             }
-            break; // Sai do loop dessa aba
           }
         }
       });
 
       if (novos.length > 0) {
         salvarDados(novos);
-        alert(`✅ Sucesso! ${novos.length} carga(s) lida(s) e cadastrada(s) da planilha.`);
+        alert(`✅ Sucesso! ${novos.length} carga(s) foram lidas e salvas!`);
       } else {
-        alert('⚠️ Não foi possível identificar as cargas. Verifique se a planilha contém os dados de Carga, Placa, Motorista e Cidade.');
+        alert('⚠️ Nenhuma carga encontrada. Certifique-se de que o arquivo possui números de carga válidos.');
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao abrir o arquivo Excel. Verifique se o formato está correto.');
+      alert('Erro ao processar a planilha. Tente salvar o arquivo em formato .XLSX ou .CSV.');
     }
     e.target.value = '';
   };
@@ -399,41 +377,6 @@ function calcDuration(startStr, endStr) {
 }
 
 function formatTime(isoStr) { return isoStr ? new Date(isoStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'; }
-
-// AÇÕES MOTORISTA
-function motoristaChegou(id) {
-  let c = cs.find(x => String(x.id) === String(id));
-  if (!c) return;
-  if (c.arrivalTime) return alert('Chegada já registrada!');
-
-  c.arrivalTime = new Date().toISOString();
-  if (c.s === 'Separação') c.s = 'Aguardando Doca';
-  salvarDados([c]);
-  alert(`📍 Chegada registrada com sucesso às ${formatTime(c.arrivalTime)}! Aguarde a liberação da Doca pelo ADM.`);
-}
-
-function motoristaIniciar(id) {
-  let c = cs.find(x => String(x.id) === String(id));
-  if (!c) return;
-  if (!c.dock) return alert('A doca ainda não foi informada pelo ADM!');
-  if (c.loadStart) return alert('Carregamento já foi iniciado!');
-
-  c.loadStart = new Date().toISOString();
-  salvarDados([c]);
-  alert(`▶️ Carregamento da Carga #${id} (Doca ${c.dock}) iniciado às ${formatTime(c.loadStart)}`);
-}
-
-function motoristaFinalizar(id) {
-  let c = cs.find(x => String(x.id) === String(id));
-  if (!c) return;
-  if (!c.loadStart) return alert('Você precisa iniciar o carregamento antes de finalizar!');
-  if (c.loadEnd) return alert('Carregamento já foi finalizado!');
-
-  c.loadEnd = new Date().toISOString();
-  c.s = 'Finalizado';
-  salvarDados([c]);
-  alert(`✅ Carregamento da Carga #${id} finalizado às ${formatTime(c.loadEnd)}`);
-}
 
 function renderADM(){
   let selectedDate = document.getElementById('admDateFilter').value || getTodayString();
