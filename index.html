@@ -280,7 +280,31 @@ function nova(){
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
-// LEITOR UNIVERSAL POR PADRÕES DE DADOS
+// ACOES DO MOTORISTA (ADICIONADAS)
+function motoristaChegou(id) {
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
+  c.arrivalTime = new Date().toISOString();
+  c.s = 'Aguardando Doca';
+  salvarDados([c]);
+}
+
+function motoristaIniciar(id) {
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
+  c.loadStart = new Date().toISOString();
+  salvarDados([c]);
+}
+
+function motoristaFinalizar(id) {
+  let c = cs.find(x => String(x.id) === String(id));
+  if (!c) return;
+  c.loadEnd = new Date().toISOString();
+  c.s = 'Finalizado';
+  salvarDados([c]);
+}
+
+// LEITOR UNIVERSAL POR PADROES DE DADOS
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
