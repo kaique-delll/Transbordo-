@@ -85,7 +85,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 }
 </style>
 
-<!-- XLSX Excel Parser -->
+<!-- Biblioteca para Leitura do Excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <!-- Firebase Realtime Database SDK -->
@@ -111,10 +111,10 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
     <button class="btn red" onclick="nova()">Cadastrar Manualmente</button>
 
     <div style="background:#21262d;border:2px dashed #30363d;padding:18px;border-radius:8px;margin-top:15px;text-align:center">
-      <p style="margin:0 0 10px 0;color:#c9d1d9;font-size:15px;"><strong>📁 Importar Planilha de Cargas (.xlsx / .csv)</strong></p>
-      <p style="margin:0 0 15px 0;color:#8b949e;font-size:12px;">Suporta abas para <strong>1ª Carreta</strong> e <strong>2ª Carreta</strong> lendo: <i>Carga, Placa, Motorista, Cidade</i>.</p>
+      <p style="margin:0 0 10px 0;color:#c9d1d9;font-size:15px;"><strong>📁 Selecionar Planilha Excel (.xlsx, .xls ou .csv)</strong></p>
+      <p style="margin:0 0 15px 0;color:#8b949e;font-size:12px;">O sistema vai ler automaticamente as colunas de <strong>Carga, Placa, Motorista e Cidade</strong> de todas as abas.</p>
       <label class="btn dark" style="cursor:pointer;display:inline-block">
-        📂 Selecionar Planilha Excel
+        📂 Abrir Planilha Excel
         <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="importarArquivo(event)">
       </label>
     </div>
@@ -183,7 +183,7 @@ th,td{padding:12px;border-top:1px solid #30363d;text-align:left;font-size:13px}
 </div>
 
 <script>
-// CONFIGURAÇÃO DO FIREBASE (COM O SEU BACKUP)
+// CONFIGURAÇÃO DO FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyC_kXQ4LIxLS00BWTazQJWUpACFltFcbBo",
   authDomain: "transbordo-1e959.firebaseapp.com",
@@ -207,9 +207,7 @@ try {
   console.log("Firebase rodando localmente.");
 }
 
-const st=['Separação','Aguardando Doca','Doca','Finalizado'],
-      co=['#388bfd','#d29922','#da3633','#238636'];
-
+const st=['Separação','Aguardando Doca','Doca','Finalizado'];
 let cs = [];
 
 function getTodayString() { return new Date().toISOString().slice(0, 10); }
@@ -231,7 +229,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// TEMPO REAL
+// BANCO DE DADOS EM TEMPO REAL
 if (useFirebase && db) {
   const statusElem = document.getElementById('netStatus');
   statusElem.textContent = "TEMPO REAL ATIVO ⚡";
@@ -286,7 +284,9 @@ function nova(){
   nid.value = ''; np.value = ''; nd.value = ''; nc.value = '';
 }
 
-// IMPORTAÇÃO INTELIGENTE DE EXCEL
+// -------------------------------------------------------------
+// LEITOR DE TABELA E PLANILHA EXCEL (NOVA LÓGICA ULTRA-FLEXÍVEL)
+// -------------------------------------------------------------
 function importarArquivo(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -299,64 +299,93 @@ function importarArquivo(e) {
       let novos = [];
       let today = getTodayString();
 
-      // Percorre todas as abas (1ª Carreta, 2ª Carreta, etc.)
+      // Percorre todas as abas da planilha
       workbook.SheetNames.forEach((sheetName) => {
         const worksheet = workbook.Sheets[sheetName];
-        const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-        if (!rawMatrix || rawMatrix.length === 0) return;
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+        if (!rawRows || rawRows.length === 0) return;
 
-        let colIndexes = { id: -1, driver: -1, plate: -1, dest: -1 };
+        let idxCarga = -1, idxPlaca = -1, idxMotorista = -1, idxCidade = -1;
 
-        // Identificação flexível das colunas pelo cabeçalho
-        for (let r = 0; r < rawMatrix.length; r++) {
-          let row = rawMatrix[r];
+        // 1. Procura a linha de cabeçalho
+        for (let r = 0; r < rawRows.length; r++) {
+          let row = rawRows[r];
           if (!row || !row.length) continue;
-          let rowStrArr = row.map(cell => String(cell).trim().toLowerCase());
 
-          let foundHeader = rowStrArr.some(c => c.includes('carga') || c.includes('placa') || c.includes('motorista') || c.includes('cidade') || c.includes('destino'));
+          row.forEach((cell, idx) => {
+            let str = String(cell).toLowerCase().trim();
+            if (str.includes('carga') || str.includes('num') || str.includes('nº') || str === 'id' || str.includes('ped')) {
+              if (idxCarga === -1) idxCarga = idx;
+            }
+            if (str.includes('placa') || str.includes('veic') || str.includes('carreta')) {
+              if (idxPlaca === -1) idxPlaca = idx;
+            }
+            if (str.includes('motorista') || str.includes('nome') || str.includes('condutor') || str.includes('driver')) {
+              if (idxMotorista === -1) idxMotorista = idx;
+            }
+            if (str.includes('cidade') || str.includes('destino') || str.includes('uf') || str.includes('local')) {
+              if (idxCidade === -1) idxCidade = idx;
+            }
+          });
 
-          if (foundHeader && colIndexes.id === -1) {
-            rowStrArr.forEach((cell, idx) => {
-              if (cell.includes('carga') || cell.includes('num') || cell.includes('nº') || cell === 'id') { if (colIndexes.id === -1) colIndexes.id = idx; }
-              if (cell.includes('motorista') || cell.includes('nome') || cell.includes('condutor')) colIndexes.driver = idx;
-              if (cell.includes('placa') || cell.includes('veiculo') || cell.includes('carreta')) colIndexes.plate = idx;
-              if (cell.includes('cidade') || cell.includes('destino') || cell.includes('uf')) colIndexes.dest = idx;
-            });
-            continue;
-          }
+          // Se achou pelo menos a coluna de CARGA, considera que achou o cabeçalho
+          if (idxCarga !== -1) {
+            // Se as outras colunas não estiverem explícitas, define posições padrão
+            if (idxPlaca === -1) idxPlaca = idxCarga + 1;
+            if (idxMotorista === -1) idxMotorista = idxCarga + 2;
+            if (idxCidade === -1) idxCidade = idxCarga + 3;
 
-          if (colIndexes.id !== -1) {
-            let idVal = row[colIndexes.id] ? String(row[colIndexes.id]).trim() : '';
-            let driverVal = colIndexes.driver !== -1 && row[colIndexes.driver] ? String(row[colIndexes.driver]).trim() : '-';
-            let plateVal = colIndexes.plate !== -1 && row[colIndexes.plate] ? String(row[colIndexes.plate]).trim() : '-';
-            let destVal = colIndexes.dest !== -1 && row[colIndexes.dest] ? String(row[colIndexes.dest]).trim() : '-';
+            // Extrai as linhas abaixo do cabeçalho
+            for (let dataRowIdx = r + 1; dataRowIdx < rawRows.length; dataRowIdx++) {
+              let dRow = rawRows[dataRowIdx];
+              if (!dRow || dRow.length === 0) continue;
 
-            // Identifica qual é a carreta pelo nome da aba
-            let carretaPos = sheetName.toLowerCase().includes('segunda') || sheetName.toLowerCase().includes('2') ? '2ª Carreta' : '1ª Carreta';
+              let valCarga = dRow[idxCarga] ? String(dRow[idxCarga]).trim() : '';
+              let valPlaca = dRow[idxPlaca] ? String(dRow[idxPlaca]).trim() : '-';
+              let valMotorista = dRow[idxMotorista] ? String(dRow[idxMotorista]).trim() : '-';
+              let valCidade = dRow[idxCidade] ? String(dRow[idxCidade]).trim() : '-';
 
-            if (idVal && idVal !== '-' && idVal.length >= 2) {
-              if (!cs.some(x => String(x.id) === String(idVal))) {
-                let item = { id: idVal, d: driverVal, p: plateVal, c: destVal, s: 'Separação', dock: '', arrivalTime: null, loadStart: null, loadEnd: null, createdAt: today, carreta: carretaPos };
-                cs.push(item);
-                novos.push(item);
+              let nomeAbaLower = sheetName.toLowerCase();
+              let carretaNome = (nomeAbaLower.includes('2') || nomeAbaLower.includes('segunda')) ? '2ª Carreta' : '1ª Carreta';
+
+              if (valCarga && valCarga !== '-' && valCarga.length >= 2) {
+                if (!cs.some(x => String(x.id) === String(valCarga))) {
+                  let item = {
+                    id: valCarga,
+                    d: valMotorista,
+                    p: valPlaca,
+                    c: valCidade,
+                    s: 'Separação',
+                    dock: '',
+                    arrivalTime: null,
+                    loadStart: null,
+                    loadEnd: null,
+                    createdAt: today,
+                    carreta: carretaNome
+                  };
+                  cs.push(item);
+                  novos.push(item);
+                }
               }
             }
+            break; // Sai do loop dessa aba
           }
         }
       });
 
       if (novos.length > 0) {
         salvarDados(novos);
-        alert(`✅ ${novos.length} carga(s) lida(s) e importada(s) com sucesso!`);
+        alert(`✅ Sucesso! ${novos.length} carga(s) lida(s) e cadastrada(s) da planilha.`);
       } else {
-        alert('⚠️ Nenhuma carga nova encontrada na planilha.');
+        alert('⚠️ Não foi possível identificar as cargas. Verifique se a planilha contém os dados de Carga, Placa, Motorista e Cidade.');
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao ler a planilha Excel.');
+      alert('Erro ao abrir o arquivo Excel. Verifique se o formato está correto.');
     }
     e.target.value = '';
   };
+
   if (reader.readAsBinaryString) reader.readAsBinaryString(file);
   else reader.readAsArrayBuffer(file);
 }
